@@ -1,6 +1,1 @@
-resource/recipes.csv
-resource/reviews.csv
-resource/recipes.pkl
-resource/reviews.pkl
-resource/recipe_search_engine.pkl
-resource/spell_collection.pkl
+resource/
