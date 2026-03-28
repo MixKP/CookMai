@@ -42,7 +42,13 @@
     <main>
         <div id="resultsSection">
             <div id="typoAlert" class="alert">
-                Did you mean: <a id="suggestedLink"></a>?
+                <span class="alert-icon">💡</span>
+                <span class="alert-content">
+                    <strong>Did you mean:</strong> <a id="suggestedLink" class="suggestion-link"></a>?
+                    <span class="alert-divider">|</span>
+                    <a id="keepOriginal" class="keep-link">Search for "<span id="originalQuery"></span>" instead</a>
+                </span>
+                <button class="alert-close" onclick="dismissAlert()">✕</button>
             </div>
 
             <div class="results-header">
@@ -68,6 +74,38 @@
             <img id="modalImg" class="modal-hero-img" src="" alt="">
             <div class="modal-body">
                 <h2 id="modalTitle" class="modal-title"></h2>
+
+                <!-- Recipe Info Section -->
+                <div class="modal-info-section">
+                    <div id="modalDescription" class="modal-description"></div>
+                    <div class="modal-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Category:</span>
+                            <span id="modalCategory" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Prep:</span>
+                            <span id="modalPrepTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Cook:</span>
+                            <span id="modalCookTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Total:</span>
+                            <span id="modalTotalTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Servings:</span>
+                            <span id="modalServings" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item" id="ratingContainer">
+                            <span class="meta-label">Rating:</span>
+                            <span id="modalRating" class="meta-value"></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="modal-cols">
                     <div>
                         <div class="col-label">Ingredients</div>
@@ -83,12 +121,8 @@
     </div>
 
     <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
     <script>
-        // Modal functions
-        function closeModal() {
-            document.getElementById('recipeModal').style.display = 'none';
-        }
-
         document.addEventListener('DOMContentLoaded', () => {
             const query = {{ query | tojson }};
             if (query) {

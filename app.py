@@ -1,4 +1,5 @@
 import pickle
+import numpy as np
 from flask import Flask, request, jsonify, render_template
 
 from model.SpellChecker import SpellChecker ,spell_preprocessor
@@ -29,6 +30,14 @@ def search():
 @app.route('/api/search', methods=['GET'])
 def api_search():
     query = request.args.get('q', '').lower()
+
+    # Handle empty input
+    if not query.strip():
+        return jsonify({
+            "error": "Please enter a search query",
+            "results": []
+        }), 400
+
     query_words = query.split()
 
     corrected_words = []
@@ -42,14 +51,15 @@ def api_search():
 
     suggested_query = " ".join(corrected_words)
 
-    results_df = search_engine.search(query)
+    # Search using BM25
+    results_df = search_engine.search(query, top_k=10)
 
     # Debug: print columns to see what we're working with
     print("DataFrame columns:", results_df.columns.tolist())
 
     results = results_df.to_dict(orient='records')
 
-    # Add images from ImageCollection for each recipe
+    # Replace NaN values with None for JSON serialization
     for recipe in results:
         # Try different possible field names for the recipe ID
         recipe_id = recipe.get('RecipeId') or recipe.get('recipe_id') or recipe.get('Id') or recipe.get('id')
@@ -59,6 +69,11 @@ def api_search():
             recipe['Images'] = image_urls[0] if image_urls else ''
         else:
             recipe['Images'] = ''
+
+        # Replace NaN values with None (becomes null in JSON)
+        for key, value in recipe.items():
+            if isinstance(value, float) and np.isnan(value):
+                recipe[key] = None
 
     return jsonify({
         "original_query": query,

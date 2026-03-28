@@ -15,23 +15,46 @@ async function executeSearch(query) {
 
         document.getElementById('spinner').style.display = 'none';
 
+        // Handle error response
+        if (data.error) {
+            document.getElementById('noResults').style.display = 'block';
+            document.getElementById('resultsCount').textContent = 'top 0 matches';
+            return;
+        }
+
         if (data.has_typo) {
-            const alert = document.getElementById('typoAlert');
+            const alertBox = document.getElementById('typoAlert');
             const link = document.getElementById('suggestedLink');
+            const keepLink = document.getElementById('keepOriginal');
+            const originalQuerySpan = document.getElementById('originalQuery');
+
+            // Set suggestion link
             link.textContent = data.suggested_query;
-            link.onclick = (e) => { e.preventDefault(); executeSearch(data.suggested_query); };
-            alert.style.display = 'block';
+            link.onclick = (e) => {
+                e.preventDefault();
+                executeSearch(data.suggested_query);
+            };
+
+            // Set "keep original" link
+            originalQuerySpan.textContent = data.original_query;
+            keepLink.onclick = (e) => {
+                e.preventDefault();
+                dismissAlert();
+            };
+
+            // Show alert
+            alertBox.style.display = 'flex';
         }
 
         const list = document.getElementById('recipeList');
 
         if (!data.results || data.results.length === 0) {
             document.getElementById('noResults').style.display = 'block';
-            document.getElementById('resultsCount').textContent = '0 results';
+            document.getElementById('resultsCount').textContent = 'top 0 matches';
             return;
         }
 
-        document.getElementById('resultsCount').textContent = `${data.results.length} result${data.results.length !== 1 ? 's' : ''}`;
+        document.getElementById('resultsCount').textContent = `top ${data.results.length} match${data.results.length !== 1 ? 'es' : ''}`;
 
         data.results.forEach((recipe, i) => {
             const ings = parseArray(recipe.RecipeIngredientParts);
@@ -60,6 +83,10 @@ async function executeSearch(query) {
         document.getElementById('noResults').style.display = 'block';
         console.error(err);
     }
+}
+
+function dismissAlert() {
+    document.getElementById('typoAlert').style.display = 'none';
 }
 
 document.getElementById('headerSearchForm').addEventListener('submit', e => {

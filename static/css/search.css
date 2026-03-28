@@ -1,19 +1,100 @@
 .alert {
-  background: var(--orange-light);
-  border-left: 3px solid var(--orange);
-  padding: 0.75rem 1.2rem;
-  border-radius: 0 8px 8px 0;
-  font-size: 0.9rem;
+  background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+  border-left: 4px solid var(--orange);
+  padding: 1rem 1.5rem;
+  border-radius: 12px;
+  font-size: 0.95rem;
   color: #92400e;
   margin-bottom: 1.5rem;
   display: none;
+  align-items: center;
+  gap: 0.75rem;
+  box-shadow: 0 2px 8px rgba(245, 158, 11, 0.15);
+  position: relative;
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.alert-icon {
+  font-size: 1.3rem;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.alert strong {
+  color: #78350f;
 }
 
 .alert a {
   font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.alert .suggestion-link {
   color: var(--orange-dark);
   text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.alert .suggestion-link:hover {
+  color: #b45309;
+  text-decoration-style: solid;
+}
+
+.alert-divider {
+  color: #92400e;
+  margin: 0 0.25rem;
+}
+
+.alert .keep-link {
+  color: #78350f;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}
+
+.alert .keep-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.alert-close {
+  background: rgba(120, 53, 15, 0.1);
+  border: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  font-size: 1rem;
   cursor: pointer;
+  color: #78350f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.alert-close:hover {
+  background: rgba(120, 53, 15, 0.2);
+  transform: scale(1.05);
 }
 
 #resultsSection {
