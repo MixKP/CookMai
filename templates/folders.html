@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Folders — CookMai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/folders.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a class="brand" href="/">
+                <div class="brand-bubble">🍳</div>
+                <span class="brand-text">CookMai</span>
+            </a>
+
+            <div class="brand-cooking">
+                <span class="cooking-icon">📁</span>
+                <span class="cooking-label">My Folders</span>
+            </div>
+
+            <div class="user-menu">
+                <a href="/folders" class="folders-link">📁 My Folders</a>
+                <span class="user-greeting">Hi, <span id="username"></span></span>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="folders-header">
+            <h1>My Recipe Folders</h1>
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input id="searchInput" type="text" placeholder="Search folders...">
+                </div>
+                <select id="sortSelect" class="sort-select">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="name">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="count">Most Bookmarks</option>
+                </select>
+                <button id="createFolderBtn" class="btn-primary">
+                    <span>+</span>
+                    <span>New Folder</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="foldersGrid" class="folders-grid"></div>
+
+        <div id="noFolders" class="no-folders" style="display: none;">
+            <div class="no-folders-icon">📁</div>
+            <h3>No folders yet</h3>
+            <p>Create your first folder to start organizing your favorite recipes</p>
+        </div>
+    </main>
+
+    <div id="folderModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeFolderModal()">✕</button>
+            <h2 id="folderModalTitle" class="modal-title">Create New Folder</h2>
+
+            <form id="folderForm" class="folder-form">
+                <input type="hidden" id="folderId">
+
+                <div class="form-group">
+                    <label for="folderName">Folder Name *</label>
+                    <input id="folderName" type="text" required placeholder="e.g., Favorite Desserts" maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="folderDescription">Description (optional)</label>
+                    <textarea id="folderDescription" rows="2" placeholder="What's this folder for?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Choose Icon</label>
+                    <div class="icon-picker" id="iconPicker">
+                        <div class="icon-option selected" data-icon="📁" title="Folder">📁</div>
+                        <div class="icon-option" data-icon="⭐" title="Star">⭐</div>
+                        <div class="icon-option" data-icon="❤️" title="Heart">❤️</div>
+                        <div class="icon-option" data-icon="🍳" title="Cooking">🍳</div>
+                        <div class="icon-option" data-icon="🍰" title="Dessert">🍰</div>
+                        <div class="icon-option" data-icon="🍕" title="Pizza">🍕</div>
+                        <div class="icon-option" data-icon="🥗" title="Salad">🥗</div>
+                        <div class="icon-option" data-icon="🍜" title="Noodles">🍜</div>
+                    </div>
+                </div>
+
+                <div id="folderError" class="error-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeFolderModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-box modal-small">
+            <h2>Delete Folder?</h2>
+            <p>Are you sure you want to delete <strong>"<span id="deleteFolderName"></span>"</strong>? This action cannot be undone and will remove all bookmarks in this folder.</p>
+
+            <div id="deleteError" class="error-message"></div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button id="confirmDeleteBtn" class="btn-danger">Delete Folder</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script>
+        let currentUser = null;
+        let folders = [];
+        let folderToDelete = null;
+        let selectedIcon = '📁';
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/status');
+                const data = await res.json();
+                if (data.authenticated) {
+                    currentUser = data;
+                    document.getElementById('username').textContent = data.username;
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (err) {
+                window.location.href = '/login';
+            }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        });
+
+        async function loadFolders() {
+            try {
+                const res = await fetch('/api/folders');
+                const data = await res.json();
+                folders = data;
+                renderFolders();
+            } catch (err) {
+                console.error('Failed to load folders:', err);
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        function renderFolders() {
+            const grid = document.getElementById('foldersGrid');
+            const noFolders = document.getElementById('noFolders');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sortBy = document.getElementById('sortSelect').value;
+
+            let filteredFolders = folders.filter(f =>
+                f.name.toLowerCase().includes(searchTerm) ||
+                (f.description && f.description.toLowerCase().includes(searchTerm))
+            );
+
+            filteredFolders.sort((a, b) => {
+                switch (sortBy) {
+                    case 'oldest':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    case 'name':
+                        return a.name.localeCompare(b.name);
+                    case 'name_desc':
+                        return b.name.localeCompare(a.name);
+                    case 'count':
+                        return b.bookmark_count - a.bookmark_count;
+                    default: // newest
+                        return new Date(b.created_at) - new Date(a.created_at);
+                }
+            });
+
+            if (filteredFolders.length === 0) {
+                grid.style.display = 'none';
+                noFolders.style.display = 'block';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            noFolders.style.display = 'none';
+
+            grid.innerHTML = filteredFolders.map(folder => `
+                <div class="folder-card" data-folder-id="${folder.id}">
+                    <div class="folder-content">
+                        <div class="folder-header">
+                            <div class="folder-title">
+                                <div class="folder-icon-large">${folder.icon}</div>
+                                <h3 class="folder-name">${escapeHtml(folder.name)}</h3>
+                            </div>
+                            <div style="position: relative;">
+                                <button class="folder-actions-btn" onclick="toggleActionsMenu(${folder.id}, event)">⋯</button>
+                                <div id="actionsMenu-${folder.id}" class="folder-actions-menu">
+                                    <div class="action-item" onclick="editFolder(${folder.id})">
+                                        <span>✏️</span> Edit
+                                    </div>
+                                    <div class="action-item" onclick="showDeleteModal(${folder.id}, '${escapeHtml(folder.name)}')">
+                                        <span>🗑️</span> Delete
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ${folder.description ? `<p class="folder-description">${escapeHtml(folder.description)}</p>` : ''}
+                        <div class="folder-stats">
+                            <div class="stat-item">
+                                <span class="stat-icon">📌</span>
+                                <span>${folder.bookmark_count} bookmark${folder.bookmark_count !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                        <div class="folder-meta">
+                            <span class="last-updated">Created ${formatDate(folder.created_at)}</span>
+                            <button class="btn-view-bookmarks" onclick="viewBookmarks(${folder.id}, '${escapeHtml(folder.name)}')">
+                                View →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleActionsMenu(folderId, event) {
+            event.stopPropagation();
+            const menu = document.getElementById(`actionsMenu-${folderId}`);
+            document.querySelectorAll('.folder-actions-menu').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            menu.classList.toggle('show');
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.folder-actions-menu').forEach(m => m.classList.remove('show'));
+        });
+
+        function openFolderModal(folder = null) {
+            const modal = document.getElementById('folderModal');
+            const title = document.getElementById('folderModalTitle');
+            const form = document.getElementById('folderForm');
+
+            if (folder) {
+                title.textContent = 'Edit Folder';
+                document.getElementById('folderId').value = folder.id;
+                document.getElementById('folderName').value = folder.name;
+                document.getElementById('folderDescription').value = folder.description || '';
+                selectIcon(folder.icon || '📁');
+                document.querySelector('#folderForm button[type="submit"]').textContent = 'Save Changes';
+            } else {
+                title.textContent = 'Create New Folder';
+                form.reset();
+                document.getElementById('folderId').value = '';
+                selectIcon('📁');
+                document.querySelector('#folderForm button[type="submit"]').textContent = 'Create Folder';
+            }
+
+            document.getElementById('folderError').classList.remove('show');
+            modal.style.display = 'flex';
+        }
+
+        function closeFolderModal() {
+            document.getElementById('folderModal').style.display = 'none';
+        }
+
+        function selectIcon(icon) {
+            selectedIcon = icon;
+            document.querySelectorAll('.icon-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.icon === icon);
+            });
+        }
+
+        document.getElementById('iconPicker').addEventListener('click', (e) => {
+            const option = e.target.closest('.icon-option');
+            if (option) selectIcon(option.dataset.icon);
+        });
+
+        function editFolder(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                openFolderModal(folder);
+            }
+        }
+
+        async function saveFolder(e) {
+            e.preventDefault();
+
+            const folderId = document.getElementById('folderId').value;
+            const name = document.getElementById('folderName').value.trim();
+            const description = document.getElementById('folderDescription').value.trim();
+            const errorDiv = document.getElementById('folderError');
+
+            errorDiv.classList.remove('show');
+
+            const data = {
+                name,
+                description,
+                icon: selectedIcon
+            };
+
+            try {
+                const url = folderId ? `/api/folders/${folderId}` : '/api/folders';
+                const method = folderId ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    closeFolderModal();
+                    loadFolders();
+                } else {
+                    errorDiv.textContent = result.error || 'Failed to save folder';
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        function showDeleteModal(folderId, folderName) {
+            folderToDelete = folderId;
+            document.getElementById('deleteFolderName').textContent = folderName;
+            document.getElementById('deleteModal').style.display = 'flex';
+            document.getElementById('deleteError').classList.remove('show');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            folderToDelete = null;
+        }
+
+        async function confirmDelete() {
+            if (!folderToDelete) return;
+
+            const errorDiv = document.getElementById('deleteError');
+
+            try {
+                const res = await fetch(`/api/folders/${folderToDelete}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    closeDeleteModal();
+                    loadFolders();
+                } else {
+                    const result = await res.json();
+                    errorDiv.textContent = result.error || 'Failed to delete folder';
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        function viewBookmarks(folderId, folderName) {
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        document.getElementById('createFolderBtn').addEventListener('click', () => openFolderModal());
+        document.getElementById('folderForm').addEventListener('submit', saveFolder);
+        document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+        document.getElementById('searchInput').addEventListener('input', renderFolders);
+        document.getElementById('sortSelect').addEventListener('change', renderFolders);
+
+        document.getElementById('folderModal').addEventListener('click', e => {
+            if (e.target.id === 'folderModal') closeFolderModal();
+        });
+
+        document.getElementById('deleteModal').addEventListener('click', e => {
+            if (e.target.id === 'deleteModal') closeDeleteModal();
+        });
+
+        checkAuth();
+        loadFolders();
+    </script>
+</body>
+
+</html>

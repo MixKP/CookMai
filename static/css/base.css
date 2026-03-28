@@ -114,6 +114,20 @@ header {
   gap: 1rem;
 }
 
+.folders-link {
+  padding: 0.4rem 1rem;
+  color: var(--text);
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.folders-link:hover {
+  background: var(--orange-light);
+  color: var(--orange-dark);
+}
+
 .user-greeting {
   font-size: 0.9rem;
   color: var(--text-muted);

@@ -36,6 +36,12 @@
                     </svg>
                 </button>
             </form>
+
+            <div class="user-menu">
+                <a href="/folders" class="folders-link">📁 My Folders</a>
+                <span class="user-greeting">Hi, <span id="username"></span></span>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
         </div>
     </header>
 
@@ -129,6 +135,27 @@
                 executeSearch(query);
             }
         });
+
+        async function checkAuth() {
+            try {
+                const res = await fetch('/api/auth/status');
+                const data = await res.json();
+                if (data.authenticated) {
+                    document.getElementById('username').textContent = data.username;
+                } else {
+                    window.location.href = '/login';
+                }
+            } catch (err) {
+                window.location.href = '/login';
+            }
+        }
+
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            await fetch('/api/auth/logout', { method: 'POST' });
+            window.location.href = '/login';
+        });
+
+        checkAuth();
     </script>
     <script src="{{ url_for('static', filename='javascript/search.js') }}"></script>
 </body>

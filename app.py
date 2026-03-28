@@ -9,7 +9,7 @@ from model.SpellChecker import SpellChecker ,spell_preprocessor
 from model.CustomPreprocessor import CustomPreprocessor
 from model.RecipeSearchEngine import RecipeSearchEngine
 from model.ImageCollection import ImageCollection
-from model.User import db, User
+from model.User import db, User, Folder, Bookmark
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
@@ -173,6 +173,185 @@ def auth_status():
             "username": current_user.username
         }), 200
     return jsonify({"authenticated": False}), 200
+
+@app.route('/folders')
+@login_required
+def folders_page():
+    return render_template('folders.html')
+
+@app.route('/api/folders', methods=['GET'])
+@login_required
+def get_folders():
+    folders = Folder.query.filter_by(user_id=current_user.id).order_by(Folder.created_at.desc()).all()
+    return jsonify([{
+        'id': f.id,
+        'name': f.name,
+        'description': f.description,
+        'icon': f.icon,
+        'bookmark_count': len(f.bookmarks),
+        'created_at': f.created_at.isoformat() if f.created_at else None
+    } for f in folders])
+
+@app.route('/api/folders', methods=['POST'])
+@login_required
+def create_folder():
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    description = data.get('description', '').strip()
+    icon = data.get('icon', '📁')
+
+    if not name:
+        return jsonify({'error': 'Folder name is required'}), 400
+
+    if len(name) > 100:
+        return jsonify({'error': 'Folder name must be less than 100 characters'}), 400
+
+    folder = Folder(
+        user_id=current_user.id,
+        name=name,
+        description=description or None,
+        color='none',
+        icon=icon
+    )
+    db.session.add(folder)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Folder created',
+        'folder': {
+            'id': folder.id,
+            'name': folder.name,
+            'description': folder.description,
+            'icon': folder.icon,
+            'bookmark_count': 0,
+            'created_at': folder.created_at.isoformat()
+        }
+    }), 201
+
+@app.route('/api/folders/<int:folder_id>', methods=['PUT'])
+@login_required
+def update_folder(folder_id):
+    folder = Folder.query.filter_by(id=folder_id, user_id=current_user.id).first()
+
+    if not folder:
+        return jsonify({'error': 'Folder not found'}), 404
+
+    data = request.get_json()
+    name = data.get('name', '').strip()
+    description = data.get('description', '').strip()
+    icon = data.get('icon', '📁')
+
+    if not name:
+        return jsonify({'error': 'Folder name is required'}), 400
+
+    if len(name) > 100:
+        return jsonify({'error': 'Folder name must be less than 100 characters'}), 400
+
+    folder.name = name
+    folder.description = description or None
+    folder.icon = icon
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Folder updated',
+        'folder': {
+            'id': folder.id,
+            'name': folder.name,
+            'description': folder.description,
+            'icon': folder.icon,
+            'bookmark_count': len(folder.bookmarks),
+            'created_at': folder.created_at.isoformat()
+        }
+    })
+
+@app.route('/api/folders/<int:folder_id>', methods=['DELETE'])
+@login_required
+def delete_folder(folder_id):
+    folder = Folder.query.filter_by(id=folder_id, user_id=current_user.id).first()
+
+    if not folder:
+        return jsonify({'error': 'Folder not found'}), 404
+
+    db.session.delete(folder)
+    db.session.commit()
+
+    return jsonify({'message': 'Folder deleted'})
+
+@app.route('/api/folders/<int:folder_id>/bookmarks', methods=['GET'])
+@login_required
+def get_folder_bookmarks(folder_id):
+    folder = Folder.query.filter_by(id=folder_id, user_id=current_user.id).first()
+
+    if not folder:
+        return jsonify({'error': 'Folder not found'}), 404
+
+    bookmarks = Bookmark.query.filter_by(folder_id=folder_id).order_by(Bookmark.created_at.desc()).all()
+
+    recipe_ids = [b.recipe_id for b in bookmarks]
+
+    return jsonify([{
+        'id': b.id,
+        'recipe_id': b.recipe_id,
+        'recipe_name': b.recipe_name,
+        'user_rating': b.user_rating,
+        'notes': b.notes,
+        'created_at': b.created_at.isoformat() if b.created_at else None
+    } for b in bookmarks])
+
+@app.route('/api/bookmarks', methods=['POST'])
+@login_required
+def add_bookmark():
+    data = request.get_json()
+    folder_id = data.get('folder_id')
+    recipe_id = data.get('recipe_id')
+    recipe_name = data.get('recipe_name', '').strip()
+    user_rating = data.get('user_rating')
+    notes = data.get('notes', '').strip()
+
+    if not folder_id or not recipe_id or not recipe_name:
+        return jsonify({'error': 'folder_id, recipe_id, and recipe_name are required'}), 400
+
+    folder = Folder.query.filter_by(id=folder_id, user_id=current_user.id).first()
+    if not folder:
+        return jsonify({'error': 'Folder not found'}), 404
+
+    existing = Bookmark.query.filter_by(user_id=current_user.id, folder_id=folder_id, recipe_id=recipe_id).first()
+    if existing:
+        return jsonify({'error': 'Recipe already bookmarked in this folder'}), 400
+
+    bookmark = Bookmark(
+        user_id=current_user.id,
+        folder_id=folder_id,
+        recipe_id=recipe_id,
+        recipe_name=recipe_name,
+        user_rating=user_rating if user_rating is not None else None,
+        notes=notes or None
+    )
+    db.session.add(bookmark)
+    db.session.commit()
+
+    return jsonify({
+        'message': 'Bookmark added',
+        'bookmark': {
+            'id': bookmark.id,
+            'recipe_id': bookmark.recipe_id,
+            'recipe_name': bookmark.recipe_name,
+            'user_rating': bookmark.user_rating
+        }
+    }), 201
+
+@app.route('/api/bookmarks/<int:bookmark_id>', methods=['DELETE'])
+@login_required
+def delete_bookmark(bookmark_id):
+    bookmark = Bookmark.query.filter_by(id=bookmark_id, user_id=current_user.id).first()
+
+    if not bookmark:
+        return jsonify({'error': 'Bookmark not found'}), 404
+
+    db.session.delete(bookmark)
+    db.session.commit()
+
+    return jsonify({'message': 'Bookmark removed'})
 
 if __name__ == '__main__':
     with app.app_context():
