@@ -1,4 +1,32 @@
+# Data & model files
 resource/
-models/__pycache__/
-.vscode/
+
+# Python
 __pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+models/__pycache__/
+
+# Virtual environments
+venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Jupyter
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# Logs
+*.log

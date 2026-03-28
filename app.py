@@ -31,7 +31,6 @@ def search():
 def api_search():
     query = request.args.get('q', '').lower()
 
-    # Handle empty input
     if not query.strip():
         return jsonify({
             "error": "Please enter a search query",
@@ -51,17 +50,13 @@ def api_search():
 
     suggested_query = " ".join(corrected_words)
 
-    # Search using BM25
     results_df = search_engine.search(query, top_k=10)
 
-    # Debug: print columns to see what we're working with
     print("DataFrame columns:", results_df.columns.tolist())
 
     results = results_df.to_dict(orient='records')
 
-    # Replace NaN values with None for JSON serialization
     for recipe in results:
-        # Try different possible field names for the recipe ID
         recipe_id = recipe.get('RecipeId') or recipe.get('recipe_id') or recipe.get('Id') or recipe.get('id')
 
         if recipe_id:
@@ -70,7 +65,6 @@ def api_search():
         else:
             recipe['Images'] = ''
 
-        # Replace NaN values with None (becomes null in JSON)
         for key, value in recipe.items():
             if isinstance(value, float) and np.isnan(value):
                 recipe[key] = None

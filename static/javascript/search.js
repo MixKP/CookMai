@@ -15,7 +15,6 @@ async function executeSearch(query) {
 
         document.getElementById('spinner').style.display = 'none';
 
-        // Handle error response
         if (data.error) {
             document.getElementById('noResults').style.display = 'block';
             document.getElementById('resultsCount').textContent = 'top 0 matches';
@@ -28,21 +27,18 @@ async function executeSearch(query) {
             const keepLink = document.getElementById('keepOriginal');
             const originalQuerySpan = document.getElementById('originalQuery');
 
-            // Set suggestion link
             link.textContent = data.suggested_query;
             link.onclick = (e) => {
                 e.preventDefault();
                 executeSearch(data.suggested_query);
             };
 
-            // Set "keep original" link
             originalQuerySpan.textContent = data.original_query;
             keepLink.onclick = (e) => {
                 e.preventDefault();
                 dismissAlert();
             };
 
-            // Show alert
             alertBox.style.display = 'flex';
         }
 

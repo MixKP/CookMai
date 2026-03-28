@@ -1,7 +1,6 @@
 function formatDuration(isoDuration) {
     if (!isoDuration || isoDuration === '—') return '—';
 
-    // Match PT5M, PT1H30M, PT30M, etc.
     const match = isoDuration.match(/PT(?:(\d+)H)?(?:(\d+)M)?/);
     if (!match) return '—';
 
@@ -25,22 +24,17 @@ function openModal(recipe) {
     document.getElementById('modalTitle').textContent = recipe.Name;
     document.getElementById('modalImg').src = getImage(recipe.Images);
 
-    // Description
     const desc = document.getElementById('modalDescription');
     desc.textContent = recipe.Description || 'No description available.';
 
-    // Category
     document.getElementById('modalCategory').textContent = recipe.RecipeCategory || '—';
 
-    // Times - Convert to user-friendly format
     document.getElementById('modalPrepTime').textContent = formatDuration(recipe.PrepTime);
     document.getElementById('modalCookTime').textContent = formatDuration(recipe.CookTime);
     document.getElementById('modalTotalTime').textContent = formatDuration(recipe.TotalTime);
 
-    // Servings
     document.getElementById('modalServings').textContent = recipe.RecipeServings ? `${recipe.RecipeServings} people` : '—';
 
-    // Rating
     const ratingContainer = document.getElementById('ratingContainer');
     const ratingEl = document.getElementById('modalRating');
     if (recipe.AggregatedRating && recipe.AggregatedRating > 0) {
@@ -50,7 +44,6 @@ function openModal(recipe) {
         ratingContainer.style.display = 'none';
     }
 
-    // Ingredients and Instructions
     document.getElementById('modalIngredients').innerHTML =
         parseArray(recipe.RecipeIngredientParts).map(i => `<li>${i}</li>`).join('') || '<li>—</li>';
     document.getElementById('modalInstructions').innerHTML =
