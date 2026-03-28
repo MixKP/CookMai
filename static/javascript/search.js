@@ -66,7 +66,7 @@ async function executeSearch(query) {
                     <div class="recipe-name">${recipe.Name}</div>
                     <div class="recipe-ingredients"><strong>Ingredients:</strong> ${ingPreview || '—'}</div>
                     <div class="recipe-meta">
-                        <span class="badge-score">⭐ ${recipe.Score.toFixed(2)}</span>
+                        ${recipe.AggregatedRating ? `<span class="badge-score">⭐ ${recipe.AggregatedRating.toFixed(1)} ${recipe.ReviewCount ? `(${recipe.ReviewCount})` : ''}</span>` : '<span class="badge-score">No ratings</span>'}
                         ${ings.length ? `<span class="badge-ingredients">${ings.length} ingredients</span>` : ''}
                     </div>
                 </div>

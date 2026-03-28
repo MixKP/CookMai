@@ -1,5 +1,9 @@
 # Data & model files
 resource/
+*.db
+*.sqlite
+*.sqlite3
+instance/
 
 # Python
 __pycache__/
