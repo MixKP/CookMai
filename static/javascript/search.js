@@ -69,6 +69,9 @@ async function executeSearch(query) {
                         ${recipe.AggregatedRating ? `<span class="badge-score">⭐ ${recipe.AggregatedRating.toFixed(1)} ${recipe.ReviewCount ? `(${recipe.ReviewCount})` : ''}</span>` : '<span class="badge-score">No ratings</span>'}
                         ${ings.length ? `<span class="badge-ingredients">${ings.length} ingredients</span>` : ''}
                     </div>
+                    <button class="btn-bookmark" onclick="openBookmarkModal(event, ${recipe.RecipeId}, '${escapeHtml(recipe.Name)}')" title="Bookmark this recipe">
+                        🔖 Bookmark
+                    </button>
                 </div>
             `;
             list.appendChild(item);

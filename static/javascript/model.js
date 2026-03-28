@@ -49,6 +49,9 @@ function openModal(recipe) {
     document.getElementById('modalInstructions').innerHTML =
         parseArray(recipe.RecipeInstructions).map(s => `<li>${s}</li>`).join('') || '<li>—</li>';
 
+    const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+    bookmarkBtn.onclick = (e) => openBookmarkModal(e, recipe.RecipeId, recipe.Name);
+
     document.getElementById('recipeModal').style.display = 'flex';
 }
 

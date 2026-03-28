@@ -42,6 +42,6 @@ class Bookmark(db.Model):
     folder_id = db.Column(db.Integer, db.ForeignKey('folders.id'), nullable=False)
     recipe_id = db.Column(db.Integer, nullable=False)
     recipe_name = db.Column(db.String(255), nullable=False)
-    user_rating = db.Column(db.Integer, nullable=True)
+    user_rating = db.Column(db.Float, nullable=True)
     notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, server_default=db.func.now())

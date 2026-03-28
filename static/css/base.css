@@ -282,15 +282,21 @@ main {
 }
 
 .modal-body {
-  padding: 1.75rem 2rem 2rem;
+  padding: 2rem 2.5rem 2.5rem;
 }
 
 .modal-title {
   font-family: "Playfair Display", serif;
-  font-size: 1.8rem;
+  font-size: 2rem;
   font-weight: 700;
+  margin-top: 1rem;
   margin-bottom: 1.5rem;
   line-height: 1.2;
+  text-align: center;
+  background: var(--gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
 .modal-info-section {
@@ -323,6 +329,271 @@ main {
   font-size: 0.75rem;
   color: var(--text-muted);
   font-weight: 500;
+}
+
+.btn-bookmark-large {
+    width: 100%;
+    padding: 0.85rem 1.5rem;
+    margin-top: 1.75rem;
+    background: var(--gradient);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow);
+    flex: 1;
+}
+
+.btn-bookmark-large:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+}
+
+.btn-primary {
+    padding: 0.75rem 1.5rem;
+    background: var(--gradient);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    box-shadow: var(--shadow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+}
+
+.btn-secondary {
+    padding: 0.75rem 1.5rem;
+    background: var(--white);
+    color: var(--text);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 0.95rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+    border-color: var(--orange);
+    background: var(--orange-light);
+    color: var(--orange-dark);
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: 1.75rem;
+}
+
+.form-actions button {
+    flex: 1;
+}
+
+.bookmark-form {
+    padding: 1.5rem 2rem 2rem;
+}
+
+.bookmark-recipe-info {
+    background: linear-gradient(135deg, var(--orange-light) 0%, #fff 100%);
+    padding: 1.25rem 1.5rem;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-size: 1.15rem;
+    color: var(--text);
+    border: 2px solid var(--orange);
+    font-weight: 500;
+}
+
+.bookmark-form .form-group {
+    margin-bottom: 2rem;
+}
+
+.bookmark-form label {
+    display: block;
+    font-weight: 700;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+    font-size: 0.95rem;
+    letter-spacing: 0.02em;
+}
+
+.bookmark-form select {
+    width: 100%;
+    padding: 1rem 1.1rem;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 1rem;
+    color: var(--text);
+    background: var(--white);
+    outline: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236b7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 3rem;
+}
+
+.bookmark-form select:hover {
+    border-color: var(--orange);
+}
+
+.bookmark-form select:focus {
+    border-color: var(--orange);
+    box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.1);
+}
+
+.bookmark-form .form-hint {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--text-muted);
+    line-height: 1.4;
+}
+
+.bookmark-recipe-info {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    background: linear-gradient(135deg, var(--orange-light) 0%, #fff 100%);
+    padding: 1.5rem;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--text);
+    border: 2px solid var(--orange);
+    font-weight: 600;
+}
+
+.recipe-icon {
+    font-size: 2rem;
+}
+
+.bookmark-recipe-info {
+    display: none;
+}
+
+.star-rating {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: center;
+    align-items: center;
+}
+
+.star-rating .star-wrapper {
+    position: relative;
+    cursor: pointer;
+    user-select: none;
+}
+
+.star-rating .star {
+    font-size: 2.5rem;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    color: var(--border);
+    line-height: 1;
+    display: inline-block;
+}
+
+.star-rating .star.filled {
+    color: var(--orange);
+}
+
+.star-rating .star.half {
+    background: linear-gradient(90deg, var(--orange) 50%, var(--border) 50%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.star-rating-label {
+    text-align: center;
+    margin-top: 1rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--text);
+    min-height: 1.2rem;
+}
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--text);
+    color: var(--white);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 2000;
+    animation: slideIn 0.3s ease;
+}
+
+.toast.success {
+    background: #059669;
+}
+
+.toast.error {
+    background: #dc2626;
+}
+
+.toast.removing {
+    animation: slideOut 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+.bookmark-form .error-message {
+    background: #fee2e2;
+    color: #991b1b;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    display: none;
+    text-align: center;
+}
+
+.bookmark-form .error-message.show {
+    display: block;
 }
 
 .meta-value {
@@ -384,4 +655,31 @@ main {
 
 .recipe-item {
   animation: fadeUp 0.3s ease both;
+}
+
+.spinner {
+  display: none;
+  text-align: center;
+  padding: 3rem;
+  color: var(--text-muted);
+}
+
+.spinner-ring {
+  width: 36px;
+  height: 36px;
+  border: 3px solid var(--border);
+  border-top-color: var(--orange);
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  display: inline-block;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }

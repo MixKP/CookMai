@@ -179,6 +179,11 @@ def auth_status():
 def folders_page():
     return render_template('folders.html')
 
+@app.route('/bookmarks')
+@login_required
+def bookmarks_page():
+    return render_template('bookmarks.html')
+
 @app.route('/api/folders', methods=['GET'])
 @login_required
 def get_folders():
@@ -285,9 +290,7 @@ def get_folder_bookmarks(folder_id):
     if not folder:
         return jsonify({'error': 'Folder not found'}), 404
 
-    bookmarks = Bookmark.query.filter_by(folder_id=folder_id).order_by(Bookmark.created_at.desc()).all()
-
-    recipe_ids = [b.recipe_id for b in bookmarks]
+    bookmarks = Bookmark.query.filter_by(folder_id=folder_id).order_by(Bookmark.user_rating.desc(), Bookmark.recipe_name.asc()).all()
 
     return jsonify([{
         'id': b.id,
@@ -352,6 +355,31 @@ def delete_bookmark(bookmark_id):
     db.session.commit()
 
     return jsonify({'message': 'Bookmark removed'})
+
+@app.route('/api/bookmarks/all', methods=['GET'])
+@login_required
+def get_all_bookmarks():
+    from sqlalchemy import desc
+
+    # Fetch bookmarks ordered by rating (descending), then name (ascending)
+    bookmarks = Bookmark.query.filter_by(user_id=current_user.id).join(Folder)\
+        .order_by(Bookmark.user_rating.desc(), Bookmark.recipe_name.asc()).all()
+
+    result = []
+    for b in bookmarks:
+        folder = Folder.query.get(b.folder_id)
+        result.append({
+            'id': b.id,
+            'recipe_id': b.recipe_id,
+            'recipe_name': b.recipe_name,
+            'user_rating': b.user_rating,
+            'folder_id': b.folder_id,
+            'folder_name': folder.name if folder else 'Unknown',
+            'folder_icon': folder.icon if folder else '📁',
+            'created_at': b.created_at.isoformat() if b.created_at else None
+        })
+
+    return jsonify(result)
 
 if __name__ == '__main__':
     with app.app_context():

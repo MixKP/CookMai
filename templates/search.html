@@ -110,6 +110,9 @@
                             <span id="modalRating" class="meta-value"></span>
                         </div>
                     </div>
+                    <button id="modalBookmarkBtn" class="btn-bookmark-large" onclick="">
+                        🔖 Bookmark this Recipe
+                    </button>
                 </div>
 
                 <div class="modal-cols">
@@ -126,8 +129,61 @@
         </div>
     </div>
 
+    <div id="bookmarkModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeBookmarkModal()">✕</button>
+            <h2 class="modal-title">Save Recipe to Folder</h2>
+
+            <form class="bookmark-form" onsubmit="saveBookmark(event); return false;">
+                <div class="bookmark-recipe-info">
+                    <span class="recipe-icon">🍽️</span>
+                    <strong id="bookmarkRecipeName"></strong>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookmarkFolderSelect">Choose Folder *</label>
+                    <select id="bookmarkFolderSelect" required>
+                        <option value="">Select a folder to save to...</option>
+                    </select>
+                    <small class="form-hint">Your recipe will be saved in the selected folder</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Rate this recipe *</label>
+                    <div class="star-rating" id="starRating">
+                        <div class="star-wrapper" data-rating="1" onmousemove="handleStarHover(event, 1)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 1)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="2" onmousemove="handleStarHover(event, 2)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 2)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="3" onmousemove="handleStarHover(event, 3)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 3)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="4" onmousemove="handleStarHover(event, 4)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 4)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="5" onmousemove="handleStarHover(event, 5)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 5)">
+                            <span class="star">☆</span>
+                        </div>
+                    </div>
+                    <div class="star-rating-label" id="ratingLabel">Select your rating</div>
+                    <input type="hidden" id="bookmarkRating" value="0">
+                </div>
+
+                <div id="bookmarkError" class="error-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeBookmarkModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Recipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
     <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/bookmark.js') }}"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const query = {{ query | tojson }};

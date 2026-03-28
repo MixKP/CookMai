@@ -1,0 +1,259 @@
+.bookmarks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+}
+
+.bookmarks-header h1 {
+    font-family: "Playfair Display", serif;
+    font-size: 2.5rem;
+    font-weight: 700;
+    background: var(--gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.bookmarks-stats {
+    display: flex;
+    gap: 1.5rem;
+}
+
+.stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.95rem;
+    color: var(--text-muted);
+    background: var(--bg);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+}
+
+.bookmarks-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    animation: fadeIn 0.4s ease;
+}
+
+.bookmark-card {
+    background: var(--white);
+    border-radius: 16px;
+    padding: 1.5rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 2px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.bookmark-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: var(--gradient);
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+}
+
+.bookmark-card:hover {
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px);
+    border-color: var(--orange-light);
+}
+
+.bookmark-card:hover::before {
+    transform: scaleX(1);
+}
+
+.bookmark-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.bookmark-folder {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.folder-icon {
+    font-size: 1.2rem;
+}
+
+.folder-name {
+    font-size: 0.85rem;
+    color: var(--text-muted);
+}
+
+.bookmark-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stars {
+    font-size: 1rem;
+    letter-spacing: 2px;
+    display: flex;
+    gap: 2px;
+}
+
+.stars .star-filled {
+    color: var(--orange);
+}
+
+.stars .star-half {
+    background: linear-gradient(90deg, var(--orange) 50%, var(--border) 50%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.stars .star-empty {
+    color: var(--border);
+}
+
+.rating-number {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 600;
+}
+
+.bookmark-name {
+    font-family: "DM Sans", sans-serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text);
+    margin: 0 0 1rem 0;
+    line-height: 1.3;
+}
+
+.btn-remove {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+    background: transparent;
+    color: #dc2626;
+    border: 1.5px solid #fecaca;
+    border-radius: 10px;
+    font-family: "DM Sans", sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-remove:hover {
+    background: #fee2e2;
+    border-color: #dc2626;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.15);
+}
+
+.btn-remove:active {
+    transform: translateY(0);
+}
+
+.no-bookmarks {
+    text-align: center;
+    padding: 4rem 2rem;
+    animation: fadeIn 0.5s ease;
+}
+
+.no-bookmarks-icon {
+    font-size: 4rem;
+    margin-bottom: 1.5rem;
+    opacity: 0.4;
+}
+
+.no-bookmarks h3 {
+    font-size: 1.6rem;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+}
+
+.no-bookmarks p {
+    color: var(--text-muted);
+    font-size: 1rem;
+    margin-bottom: 2rem;
+}
+
+.no-bookmarks .btn-primary {
+    display: inline-block;
+    text-decoration: none;
+}
+
+@media (max-width: 640px) {
+    .bookmarks-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .bookmarks-list {
+        grid-template-columns: 1fr;
+    }
+
+    .bookmarks-stats {
+        flex-wrap: wrap;
+    }
+}
+
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    background: var(--text);
+    color: var(--white);
+    padding: 1rem 1.5rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    z-index: 2000;
+    animation: slideIn 0.3s ease;
+}
+
+.toast.success {
+    background: #059669;
+}
+
+.toast.error {
+    background: #dc2626;
+}
+
+.toast.removing {
+    animation: slideOut 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}

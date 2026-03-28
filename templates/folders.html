@@ -125,7 +125,131 @@
         </div>
     </div>
 
+    <div id="bookmarksModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeBookmarksModal()">✕</button>
+            <h2 id="bookmarksModalTitle" class="modal-title">Folder Bookmarks</h2>
+
+            <div id="bookmarksModalSpinner" class="spinner"><span class="spinner-ring"></span></div>
+
+            <div id="bookmarksModalContent" class="bookmarks-modal-content"></div>
+
+            <div id="noBookmarksModal" class="no-bookmarks-modal" style="display: none;">
+                <div class="no-bookmarks-icon">🔖</div>
+                <h3>No bookmarks yet</h3>
+                <p>Search and bookmark recipes to see them here!</p>
+                <a href="/" class="btn-primary">Browse Recipes</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="recipeModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <img id="modalImg" class="modal-hero-img" src="" alt="">
+            <div class="modal-body">
+                <h2 id="modalTitle" class="modal-title"></h2>
+
+                <div class="modal-info-section">
+                    <div id="modalDescription" class="modal-description"></div>
+                    <div class="modal-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Category:</span>
+                            <span id="modalCategory" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Prep:</span>
+                            <span id="modalPrepTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Cook:</span>
+                            <span id="modalCookTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Total:</span>
+                            <span id="modalTotalTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Servings:</span>
+                            <span id="modalServings" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item" id="ratingContainer">
+                            <span class="meta-label">Rating:</span>
+                            <span id="modalRating" class="meta-value"></span>
+                        </div>
+                    </div>
+                    <button id="modalBookmarkBtn" class="btn-bookmark-large" onclick="">
+                        🔖 Bookmark this Recipe
+                    </button>
+                </div>
+
+                <div class="modal-cols">
+                    <div>
+                        <div class="col-label">Ingredients</div>
+                        <ul id="modalIngredients"></ul>
+                    </div>
+                    <div>
+                        <div class="col-label">Instructions</div>
+                        <ol id="modalInstructions"></ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bookmarkModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeBookmarkModal()">✕</button>
+            <h2 class="modal-title">Bookmark Recipe</h2>
+
+            <form class="bookmark-form" onsubmit="saveBookmark(event); return false;">
+                <div class="bookmark-recipe-info">
+                    <strong id="bookmarkRecipeName"></strong>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookmarkFolderSelect">Select Folder *</label>
+                    <select id="bookmarkFolderSelect" required>
+                        <option value="">Select a folder...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Rating *</label>
+                    <div class="star-rating" id="starRating">
+                        <div class="star-wrapper" data-rating="1" onmousemove="handleStarHover(event, 1)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 1)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="2" onmousemove="handleStarHover(event, 2)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 2)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="3" onmousemove="handleStarHover(event, 3)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 3)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="4" onmousemove="handleStarHover(event, 4)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 4)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="5" onmousemove="handleStarHover(event, 5)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 5)">
+                            <span class="star">☆</span>
+                        </div>
+                    </div>
+                    <div class="star-rating-label" id="ratingLabel">Select a rating</div>
+                    <input type="hidden" id="bookmarkRating" value="0">
+                </div>
+
+                <div id="bookmarkError" class="error-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeBookmarkModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Bookmark</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/bookmark.js') }}"></script>
     <script>
         let currentUser = null;
         let folders = [];
@@ -389,7 +513,214 @@
             }
         }
 
-        function viewBookmarks(folderId, folderName) {
+        async function viewBookmarks(folderId, folderName) {
+            const modal = document.getElementById('bookmarksModal');
+            const title = document.getElementById('bookmarksModalTitle');
+            const spinner = document.getElementById('bookmarksModalSpinner');
+            const content = document.getElementById('bookmarksModalContent');
+            const noBookmarks = document.getElementById('noBookmarksModal');
+
+            title.textContent = `${folderName} - Bookmarks`;
+            spinner.style.display = 'block';
+            content.innerHTML = '';
+            noBookmarks.style.display = 'none';
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/folders/${folderId}/bookmarks`);
+                const bookmarks = await res.json();
+
+                spinner.style.display = 'none';
+
+                if (bookmarks.length === 0) {
+                    noBookmarks.style.display = 'block';
+                    return;
+                }
+
+                noBookmarks.style.display = 'none';
+                content.innerHTML = await renderBookmarksList(bookmarks, folderId, folderName);
+            } catch (err) {
+                console.error('Failed to load bookmarks:', err);
+                spinner.style.display = 'none';
+                noBookmarks.style.display = 'block';
+            }
+        }
+
+        let currentFolderId = null;
+        let currentFolderName = null;
+
+        async function renderBookmarksList(bookmarks, folderId, folderName) {
+            // Store current folder info
+            currentFolderId = folderId;
+            currentFolderName = folderName;
+
+            // Fetch recipe details for all bookmarks
+            const recipePromises = bookmarks.map(async (bookmark) => {
+                try {
+                    // Search by recipe name to get the correct recipe with image
+                    const res = await fetch(`/api/search?q=${encodeURIComponent(bookmark.recipe_name)}`);
+                    const data = await res.json();
+
+                    if (data.results && data.results.length > 0) {
+                        // Find the recipe with matching RecipeId
+                        const recipe = data.results.find(r => r.RecipeId === bookmark.recipe_id || r.recipe_id === bookmark.recipe_id || r.Id === bookmark.recipe_id);
+                        return recipe || data.results[0];
+                    }
+                    return null;
+                } catch {
+                    return null;
+                }
+            });
+
+            const recipes = await Promise.all(recipePromises);
+
+            return bookmarks.map((bookmark, i) => {
+                const rating = bookmark.user_rating || 0;
+                const stars = renderStars(rating);
+                const recipe = recipes[i];
+
+                return `
+                    <div class="bookmark-item-card" onclick="viewRecipeFromFolder(${bookmark.recipe_id}, '${escapeHtml(bookmark.recipe_name)}')">
+                        <div class="bookmark-item-header">
+                            <div class="bookmark-item-rating">
+                                <span class="stars">${stars}</span>
+                                <span class="rating-number">${rating}/5</span>
+                            </div>
+                            <span class="bookmark-item-date">${bookmark.created_at ? formatDate(bookmark.created_at) : 'Unknown'}</span>
+                        </div>
+                        <div class="bookmark-item-content">
+                            ${recipe && recipe.Images ? `
+                                <img class="bookmark-item-image" src="${getImage(recipe.Images)}" alt="${escapeHtml(bookmark.recipe_name)}" loading="lazy">
+                            ` : ''}
+                            <div class="bookmark-item-info">
+                                <h3 class="bookmark-item-name">${escapeHtml(bookmark.recipe_name)}</h3>
+                                ${recipe && recipe.Description ? `
+                                    <p class="bookmark-item-description">${escapeHtml(recipe.Description)}</p>
+                                ` : ''}
+                                ${recipe ? `
+                                    <div class="bookmark-item-meta">
+                                        ${recipe.RecipeCategory ? `<span class="meta-badge">${escapeHtml(recipe.RecipeCategory)}</span>` : ''}
+                                        ${recipe.AggregatedRating ? `<span class="meta-badge">⭐ ${recipe.AggregatedRating.toFixed(1)}</span>` : ''}
+                                        ${recipe.RecipeServings ? `<span class="meta-badge">🍽️ ${recipe.RecipeServings}</span>` : ''}
+                                    </div>
+                                ` : `
+                                    <p class="bookmark-item-recipe-id">Recipe ID: ${bookmark.recipe_id}</p>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderStars(rating) {
+            let stars = '';
+            for (let i = 1; i <= 5; i++) {
+                if (rating >= i) {
+                    stars += '<span class="star-filled">★</span>';
+                } else if (rating >= i - 0.5) {
+                    stars += '<span class="star-half">★</span>';
+                } else {
+                    stars += '<span class="star-empty">☆</span>';
+                }
+            }
+            return stars;
+        }
+
+        async function viewRecipeFromFolder(recipeId, recipeName) {
+            try {
+                // Search by recipe name to get the exact recipe
+                const res = await fetch(`/api/search?q=${encodeURIComponent(recipeName)}`);
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    // Find the recipe with matching RecipeId
+                    const recipe = data.results.find(r => r.RecipeId === recipeId || r.recipe_id === recipeId || r.Id === recipeId);
+                    if (recipe) {
+                        openModalWithoutBookmark(recipe);
+                    } else {
+                        // If no exact match, use first result
+                        openModalWithoutBookmark(data.results[0]);
+                    }
+                } else {
+                    showToast('Recipe not found', 'error');
+                }
+            } catch (err) {
+                console.error('Failed to load recipe:', err);
+                showToast('Failed to load recipe', 'error');
+            }
+        }
+
+        async function viewRecipe(recipeId) {
+            try {
+                const res = await fetch(`/api/search?q=${recipeId}`);
+                const data = await res.json();
+
+                if (data.results && data.results.length > 0) {
+                    const recipe = data.results[0];
+                    openModal(recipe);
+                } else {
+                    showToast('Recipe not found', 'error');
+                }
+            } catch (err) {
+                console.error('Failed to load recipe:', err);
+                showToast('Failed to load recipe', 'error');
+            }
+        }
+
+        function openModalWithoutBookmark(recipe) {
+            document.getElementById('modalTitle').textContent = recipe.Name;
+            document.getElementById('modalImg').src = getImage(recipe.Images);
+
+            const desc = document.getElementById('modalDescription');
+            desc.textContent = recipe.Description || 'No description available.';
+
+            document.getElementById('modalCategory').textContent = recipe.RecipeCategory || '—';
+
+            document.getElementById('modalPrepTime').textContent = formatDuration(recipe.PrepTime);
+            document.getElementById('modalCookTime').textContent = formatDuration(recipe.CookTime);
+            document.getElementById('modalTotalTime').textContent = formatDuration(recipe.TotalTime);
+
+            document.getElementById('modalServings').textContent = recipe.RecipeServings ? `${recipe.RecipeServings} people` : '—';
+
+            const ratingContainer = document.getElementById('ratingContainer');
+            const ratingEl = document.getElementById('modalRating');
+            if (recipe.AggregatedRating && recipe.AggregatedRating > 0) {
+                ratingEl.textContent = `⭐ ${recipe.AggregatedRating.toFixed(1)} (${recipe.ReviewCount || 0} reviews)`;
+                ratingContainer.style.display = 'flex';
+            } else {
+                ratingContainer.style.display = 'none';
+            }
+
+            document.getElementById('modalIngredients').innerHTML =
+                parseArray(recipe.RecipeIngredientParts).map(i => `<li>${i}</li>`).join('') || '<li>—</li>';
+            document.getElementById('modalInstructions').innerHTML =
+                parseArray(recipe.RecipeInstructions).map(s => `<li>${s}</li>`).join('') || '<li>—</li>';
+
+            // Hide bookmark button - already bookmarked
+            const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+            bookmarkBtn.style.display = 'none';
+
+            // Add a message showing it's already bookmarked
+            const infoSection = document.querySelector('.modal-info-section');
+            const bookmarkInfo = document.createElement('div');
+            bookmarkInfo.id = 'alreadyBookmarkedInfo';
+            bookmarkInfo.style.cssText = 'text-align: center; padding: 1rem; background: var(--orange-light); border-radius: 10px; margin-top: 1rem; font-weight: 600; color: var(--orange-dark);';
+            bookmarkInfo.innerHTML = `✓ Already saved in ${currentFolderName || 'your folder'}`;
+
+            // Remove existing bookmark info if any
+            const existingInfo = document.getElementById('alreadyBookmarkedInfo');
+            if (existingInfo) existingInfo.remove();
+
+            infoSection.appendChild(bookmarkInfo);
+
+            document.getElementById('recipeModal').style.display = 'flex';
+        }
+
+        function closeBookmarksModal() {
+            document.getElementById('bookmarksModal').style.display = 'none';
+            // Reset bookmark button visibility for next time
+            document.getElementById('modalBookmarkBtn').style.display = 'block';
         }
 
         function escapeHtml(text) {
@@ -410,6 +741,26 @@
 
         document.getElementById('deleteModal').addEventListener('click', e => {
             if (e.target.id === 'deleteModal') closeDeleteModal();
+        });
+
+        document.getElementById('bookmarksModal').addEventListener('click', e => {
+            if (e.target.id === 'bookmarksModal') closeBookmarksModal();
+        });
+
+        document.getElementById('recipeModal').addEventListener('click', e => {
+            if (e.target.id === 'recipeModal') closeModal();
+        });
+
+        document.getElementById('bookmarkModal').addEventListener('click', e => {
+            if (e.target.id === 'bookmarkModal') closeBookmarkModal();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeBookmarksModal();
+                closeModal();
+                closeBookmarkModal();
+            }
         });
 
         checkAuth();

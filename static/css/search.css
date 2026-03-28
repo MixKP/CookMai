@@ -168,6 +168,35 @@
   gap: 0.4rem;
 }
 
+.btn-bookmark {
+  align-self: flex-start;
+  padding: 0.6rem 1.25rem;
+  background: var(--orange-light);
+  color: var(--orange-dark);
+  border: 1.5px solid var(--orange);
+  border-radius: 10px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-bookmark:hover {
+  background: var(--orange);
+  color: white;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+}
+
+.btn-bookmark:active {
+  transform: translateY(0);
+}
+
 .recipe-name {
   font-size: 1.15rem;
   font-weight: 600;
