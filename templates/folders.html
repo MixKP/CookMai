@@ -237,6 +237,8 @@
                     <input type="hidden" id="bookmarkRating" value="0">
                 </div>
 
+                <div id="bookmarkInfo" class="info-message" style="display: none;"></div>
+
                 <div id="bookmarkError" class="error-message"></div>
 
                 <div class="form-actions">
@@ -554,19 +556,14 @@
             currentFolderId = folderId;
             currentFolderName = folderName;
 
-            // Fetch recipe details for all bookmarks
+            // Fetch recipe details for all bookmarks by RecipeId
             const recipePromises = bookmarks.map(async (bookmark) => {
                 try {
-                    // Search by recipe name to get the correct recipe with image
-                    const res = await fetch(`/api/search?q=${encodeURIComponent(bookmark.recipe_name)}`);
-                    const data = await res.json();
-
-                    if (data.results && data.results.length > 0) {
-                        // Find the recipe with matching RecipeId
-                        const recipe = data.results.find(r => r.RecipeId === bookmark.recipe_id || r.recipe_id === bookmark.recipe_id || r.Id === bookmark.recipe_id);
-                        return recipe || data.results[0];
+                    const res = await fetch(`/api/recipes/${bookmark.recipe_id}`);
+                    if (!res.ok) {
+                        return null;
                     }
-                    return null;
+                    return await res.json();
                 } catch {
                     return null;
                 }
@@ -580,13 +577,16 @@
                 const recipe = recipes[i];
 
                 return `
-                    <div class="bookmark-item-card" onclick="viewRecipeFromFolder(${bookmark.recipe_id}, '${escapeHtml(bookmark.recipe_name)}')">
+                    <div class="bookmark-item-card" onclick="viewRecipeFromFolder(${bookmark.recipe_id}, '${escapeHtml(bookmark.recipe_name)}', ${bookmark.id})">
                         <div class="bookmark-item-header">
                             <div class="bookmark-item-rating">
                                 <span class="stars">${stars}</span>
                                 <span class="rating-number">${rating}/5</span>
                             </div>
                             <span class="bookmark-item-date">${bookmark.created_at ? formatDate(bookmark.created_at) : 'Unknown'}</span>
+                            <button class="bookmark-delete-btn" onclick="deleteBookmark(event, ${bookmark.id}, '${escapeHtml(bookmark.recipe_name)}')" title="Remove from folder">
+                                ✕
+                            </button>
                         </div>
                         <div class="bookmark-item-content">
                             ${recipe && recipe.Images ? `
@@ -627,24 +627,29 @@
             return stars;
         }
 
-        async function viewRecipeFromFolder(recipeId, recipeName) {
+        async function viewRecipeFromFolder(recipeId, recipeName, bookmarkId) {
             try {
-                // Search by recipe name to get the exact recipe
-                const res = await fetch(`/api/search?q=${encodeURIComponent(recipeName)}`);
-                const data = await res.json();
-
-                if (data.results && data.results.length > 0) {
-                    // Find the recipe with matching RecipeId
-                    const recipe = data.results.find(r => r.RecipeId === recipeId || r.recipe_id === recipeId || r.Id === recipeId);
-                    if (recipe) {
-                        openModalWithoutBookmark(recipe);
-                    } else {
-                        // If no exact match, use first result
-                        openModalWithoutBookmark(data.results[0]);
-                    }
-                } else {
-                    showToast('Recipe not found', 'error');
+                const res = await fetch(`/api/recipes/${recipeId}`);
+                if (!res.ok) {
+                    throw new Error('Failed to fetch recipe');
                 }
+                const recipe = await res.json();
+
+                // Check if recipe is bookmarked in other folders
+                let otherFolders = [];
+                try {
+                    const bookmarksRes = await fetch('/api/bookmarks/all');
+                    if (bookmarksRes.ok) {
+                        const allBookmarks = await bookmarksRes.json();
+                        otherFolders = allBookmarks
+                            .filter(b => b.recipe_id === recipeId && b.folder_name !== currentFolderName)
+                            .map(b => b.folder_name);
+                    }
+                } catch (err) {
+                    console.error('Failed to check other folders:', err);
+                }
+
+                openModalWithoutBookmark(recipe, otherFolders, bookmarkId);
             } catch (err) {
                 console.error('Failed to load recipe:', err);
                 showToast('Failed to load recipe', 'error');
@@ -668,14 +673,21 @@
             }
         }
 
-        function openModalWithoutBookmark(recipe) {
+        function openModalWithoutBookmark(recipe, otherFolders = [], bookmarkId = null) {
             document.getElementById('modalTitle').textContent = recipe.Name;
             document.getElementById('modalImg').src = getImage(recipe.Images);
 
             const desc = document.getElementById('modalDescription');
-            desc.textContent = recipe.Description || 'No description available.';
+            const description = recipe.Description;
+            if (description && description !== 'Make and share this ' + recipe.Name + ' recipe from Food.com.') {
+                desc.textContent = description;
+                desc.style.display = 'block';
+            } else {
+                desc.style.display = 'none';
+            }
 
-            document.getElementById('modalCategory').textContent = recipe.RecipeCategory || '—';
+            const category = recipe.RecipeCategory;
+            document.getElementById('modalCategory').textContent = category || '—';
 
             document.getElementById('modalPrepTime').textContent = formatDuration(recipe.PrepTime);
             document.getElementById('modalCookTime').textContent = formatDuration(recipe.CookTime);
@@ -692,35 +704,114 @@
                 ratingContainer.style.display = 'none';
             }
 
-            document.getElementById('modalIngredients').innerHTML =
-                parseArray(recipe.RecipeIngredientParts).map(i => `<li>${i}</li>`).join('') || '<li>—</li>';
-            document.getElementById('modalInstructions').innerHTML =
-                parseArray(recipe.RecipeInstructions).map(s => `<li>${s}</li>`).join('') || '<li>—</li>';
+            const ingredients = parseArray(recipe.RecipeIngredientParts);
+            if (ingredients.length > 0) {
+                document.getElementById('modalIngredients').innerHTML = ingredients.map(i => `<li>${i}</li>`).join('');
+            } else {
+                document.getElementById('modalIngredients').innerHTML = '<li style="color: #999;">No ingredients listed</li>';
+            }
 
-            // Hide bookmark button - already bookmarked
+            const instructions = parseArray(recipe.RecipeInstructions);
+            if (instructions.length > 0) {
+                document.getElementById('modalInstructions').innerHTML = instructions.map(s => `<li>${s}</li>`).join('');
+            } else {
+                document.getElementById('modalInstructions').innerHTML = '<li style="color: #999;">No instructions provided</li>';
+            }
+
+            // Update bookmark button to show "Remove from Folder" action
             const bookmarkBtn = document.getElementById('modalBookmarkBtn');
-            bookmarkBtn.style.display = 'none';
+            bookmarkBtn.textContent = '🗑️ Remove from Folder';
+            bookmarkBtn.disabled = false;
+            bookmarkBtn.style.background = '#fee2e2';
+            bookmarkBtn.style.color = '#991b1b';
+            bookmarkBtn.style.borderColor = '#dc2626';
+            bookmarkBtn.style.cursor = 'pointer';
+            bookmarkBtn.style.display = 'block';
+            bookmarkBtn.onclick = () => {
+                if (bookmarkId && confirm(`Remove "${recipe.Name}" from ${currentFolderName || 'this folder'}?`)) {
+                    deleteBookmarkFromModal(bookmarkId, recipe.Name);
+                }
+            };
 
-            // Add a message showing it's already bookmarked
-            const infoSection = document.querySelector('.modal-info-section');
-            const bookmarkInfo = document.createElement('div');
-            bookmarkInfo.id = 'alreadyBookmarkedInfo';
-            bookmarkInfo.style.cssText = 'text-align: center; padding: 1rem; background: var(--orange-light); border-radius: 10px; margin-top: 1rem; font-weight: 600; color: var(--orange-dark);';
-            bookmarkInfo.innerHTML = `✓ Already saved in ${currentFolderName || 'your folder'}`;
-
-            // Remove existing bookmark info if any
+            // Remove any existing bookmark info message
             const existingInfo = document.getElementById('alreadyBookmarkedInfo');
             if (existingInfo) existingInfo.remove();
 
-            infoSection.appendChild(bookmarkInfo);
-
             document.getElementById('recipeModal').style.display = 'flex';
+        }
+
+        async function deleteBookmarkFromModal(bookmarkId, recipeName) {
+            try {
+                const res = await fetch(`/api/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showToast(`Removed "${recipeName}" from folder`, 'success');
+                    closeModal();
+                    // Refresh the current folder view
+                    if (currentFolderId) {
+                        await viewBookmarks(currentFolderId, currentFolderName);
+                    }
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to remove recipe', 'error');
+                }
+            } catch (err) {
+                console.error('Failed to delete bookmark:', err);
+                showToast('Failed to remove recipe', 'error');
+            }
         }
 
         function closeBookmarksModal() {
             document.getElementById('bookmarksModal').style.display = 'none';
             // Reset bookmark button visibility for next time
             document.getElementById('modalBookmarkBtn').style.display = 'block';
+        }
+
+        function closeModal() {
+            // Reset bookmark button to default state
+            const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+            bookmarkBtn.textContent = '🔖 Bookmark this Recipe';
+            bookmarkBtn.disabled = false;
+            bookmarkBtn.style.background = '';
+            bookmarkBtn.style.color = '';
+            bookmarkBtn.style.borderColor = '';
+            bookmarkBtn.style.cursor = '';
+            bookmarkBtn.onclick = null;
+
+            // Remove bookmark info if exists
+            const bookmarkInfo = document.getElementById('alreadyBookmarkedInfo');
+            if (bookmarkInfo) bookmarkInfo.remove();
+
+            document.getElementById('recipeModal').style.display = 'none';
+        }
+
+        async function deleteBookmark(event, bookmarkId, recipeName) {
+            event.stopPropagation();
+
+            if (!confirm(`Remove "${recipeName}" from this folder?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showToast('Recipe removed from folder ✓');
+                    // Refresh the current folder view
+                    const folderId = currentFolderId;
+                    await viewBookmarks(folderId, currentFolderName);
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to remove recipe', 'error');
+                }
+            } catch (err) {
+                console.error('Failed to delete bookmark:', err);
+                showToast('Failed to remove recipe', 'error');
+            }
         }
 
         function escapeHtml(text) {

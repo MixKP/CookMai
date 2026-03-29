@@ -197,6 +197,33 @@
   transform: translateY(0);
 }
 
+.btn-bookmark-disabled {
+  align-self: flex-start;
+  padding: 0.6rem 1.25rem;
+  background: #d1fae5;
+  color: #065f46;
+  border: 1.5px solid #10b981;
+  border-radius: 10px;
+  font-family: "DM Sans", sans-serif;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: not-allowed;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  margin-top: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.badge-bookmarked {
+  font-size: 0.78rem;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 0.25rem 0.6rem;
+  border-radius: 6px;
+  font-weight: 500;
+}
+
 .recipe-name {
   font-size: 1.15rem;
   font-weight: 600;

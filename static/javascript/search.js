@@ -10,6 +10,18 @@ async function executeSearch(query) {
     document.getElementById('spinner').style.display = 'block';
 
     try {
+        // Fetch all user bookmarks to check which recipes are already saved
+        let bookmarkedRecipeIds = new Set();
+        try {
+            const bookmarksRes = await fetch('/api/bookmarks/all');
+            if (bookmarksRes.ok) {
+                const bookmarks = await bookmarksRes.json();
+                bookmarkedRecipeIds = new Set(bookmarks.map(b => b.recipe_id));
+            }
+        } catch (err) {
+            console.error('Failed to fetch bookmarks:', err);
+        }
+
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
 
@@ -55,11 +67,28 @@ async function executeSearch(query) {
         data.results.forEach((recipe, i) => {
             const ings = parseArray(recipe.RecipeIngredientParts);
             const ingPreview = ings.slice(0, 5).join(', ') + (ings.length > 5 ? '…' : '');
+            const isBookmarked = bookmarkedRecipeIds.has(recipe.RecipeId);
 
             const item = document.createElement('div');
             item.className = 'recipe-item';
             item.style.animationDelay = `${i * 40}ms`;
-            item.onclick = () => openModal(recipe);
+
+            // Use a closure to capture the isBookmarked value
+            item.onclick = (function(bookmarkedStatus) {
+                return async function() {
+                    try {
+                        const res = await fetch(`/api/recipes/${recipe.RecipeId}`);
+                        if (!res.ok) {
+                            throw new Error('Failed to fetch recipe details');
+                        }
+                        const fullRecipe = await res.json();
+                        openModal(fullRecipe, bookmarkedStatus);
+                    } catch (err) {
+                        console.error('Failed to load recipe:', err);
+                        showToast('Failed to load recipe details', 'error');
+                    }
+                };
+            })(isBookmarked);
             item.innerHTML = `
                 <img class="recipe-thumb" src="${getImage(recipe.Images)}" loading="lazy" alt="${recipe.Name}">
                 <div class="recipe-info">
@@ -68,10 +97,17 @@ async function executeSearch(query) {
                     <div class="recipe-meta">
                         ${recipe.AggregatedRating ? `<span class="badge-score">⭐ ${recipe.AggregatedRating.toFixed(1)} ${recipe.ReviewCount ? `(${recipe.ReviewCount})` : ''}</span>` : '<span class="badge-score">No ratings</span>'}
                         ${ings.length ? `<span class="badge-ingredients">${ings.length} ingredients</span>` : ''}
+                        ${isBookmarked ? '<span class="badge-bookmarked">✓ Already bookmarked</span>' : ''}
                     </div>
-                    <button class="btn-bookmark" onclick="openBookmarkModal(event, ${recipe.RecipeId}, '${escapeHtml(recipe.Name)}')" title="Bookmark this recipe">
-                        🔖 Bookmark
-                    </button>
+                    ${isBookmarked ? `
+                        <button class="btn-bookmark btn-bookmark-disabled" disabled title="Already bookmarked">
+                            ✓ Saved
+                        </button>
+                    ` : `
+                        <button class="btn-bookmark" onclick="openBookmarkModal(event, ${recipe.RecipeId}, '${escapeHtml(recipe.Name)}')" title="Bookmark this recipe">
+                            🔖 Bookmark
+                        </button>
+                    `}
                 </div>
             `;
             list.appendChild(item);
@@ -87,54 +123,6 @@ async function executeSearch(query) {
 function dismissAlert() {
     document.getElementById('typoAlert').style.display = 'none';
 }
-
-function openModal(recipe) {
-    const modal = document.getElementById('recipeModal');
-    const ingredients = parseArray(recipe.RecipeIngredientParts);
-    const instructions = parseArray(recipe.RecipeInstructions);
-
-    document.getElementById('modalImg').src = getImage(recipe.Images);
-    document.getElementById('modalTitle').textContent = recipe.Name;
-    document.getElementById('modalDescription').textContent = recipe.Description || 'No description available.';
-    document.getElementById('modalCategory').textContent = recipe.RecipeCategory || '—';
-    document.getElementById('modalPrepTime').textContent = recipe.PrepTime || '—';
-    document.getElementById('modalCookTime').textContent = recipe.CookTime || '—';
-    document.getElementById('modalTotalTime').textContent = recipe.TotalTime || '—';
-    document.getElementById('modalServings').textContent = recipe.RecipeServings || '—';
-
-    const rating = recipe.AggregatedRating;
-    const ratingContainer = document.getElementById('ratingContainer');
-    const ratingText = document.getElementById('modalRating');
-    if (rating) {
-        ratingContainer.style.display = 'flex';
-        ratingText.textContent = `${rating.toFixed(1)} ⭐ (${recipe.ReviewCount || 0} reviews)`;
-    } else {
-        ratingContainer.style.display = 'none';
-    }
-
-    const ingredientsList = document.getElementById('modalIngredients');
-    ingredientsList.innerHTML = ingredients.map(ing => `<li>${ing}</li>`).join('');
-
-    const instructionsList = document.getElementById('modalInstructions');
-    instructionsList.innerHTML = instructions.map(inst => `<li>${inst}</li>`).join('');
-
-    const bookmarkBtn = document.getElementById('modalBookmarkBtn');
-    bookmarkBtn.onclick = () => openBookmarkModal(null, recipe.RecipeId, recipe.Name);
-
-    modal.style.display = 'flex';
-    document.body.style.overflow = 'hidden';
-}
-
-function closeModal() {
-    document.getElementById('recipeModal').style.display = 'none';
-    document.body.style.overflow = '';
-}
-
-document.getElementById('recipeModal').addEventListener('click', e => {
-    if (e.target.id === 'recipeModal') {
-        closeModal();
-    }
-});
 
 document.getElementById('headerSearchForm').addEventListener('submit', e => {
     e.preventDefault();

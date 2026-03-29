@@ -18,7 +18,7 @@ async function loadUserFolders() {
 }
 
 async function openBookmarkModal(event, recipeId, recipeName) {
-    event.stopPropagation();
+    if (event) event.stopPropagation();
 
     await loadUserFolders();
 
@@ -36,11 +36,50 @@ async function openBookmarkModal(event, recipeId, recipeName) {
     const modal = document.getElementById('bookmarkModal');
     const folderSelect = document.getElementById('bookmarkFolderSelect');
 
-    folderSelect.innerHTML = '<option value="">Select a folder...</option>' +
-        userFolders.map(f => `<option value="${f.id}">${f.icon} ${escapeHtml(f.name)}</option>`).join('');
+    // Check which folders already have this recipe bookmarked
+    const bookmarkedFolders = [];
+    for (const folder of userFolders) {
+        try {
+            const res = await fetch(`/api/folders/${folder.id}/bookmarks`);
+            if (res.ok) {
+                const bookmarks = await res.json();
+                const alreadyBookmarked = bookmarks.some(b => b.recipe_id === recipeId);
+                if (alreadyBookmarked) {
+                    bookmarkedFolders.push(folder.name);
+                }
+            }
+        } catch (err) {
+            console.error('Failed to check folder bookmarks:', err);
+        }
+    }
+
+    // Build folder select options, disabling already bookmarked folders
+    let folderOptionsHTML = '<option value="">Select a folder...</option>';
+    folderOptionsHTML += userFolders.map(f => {
+        const isBookmarked = bookmarkedFolders.includes(f.name);
+        const disabledAttr = isBookmarked ? 'disabled' : '';
+        const bookmarkedLabel = isBookmarked ? ' (already bookmarked)' : '';
+        return `<option value="${f.id}" ${disabledAttr}>${f.icon} ${escapeHtml(f.name)}${bookmarkedLabel}</option>`;
+    }).join('');
+
+    folderSelect.innerHTML = folderOptionsHTML;
 
     document.getElementById('bookmarkRecipeName').textContent = recipeName;
     document.getElementById('bookmarkError').classList.remove('show');
+
+    // Show info about already bookmarked folders
+    if (bookmarkedFolders.length > 0) {
+        const infoDiv = document.getElementById('bookmarkInfo');
+        if (infoDiv) {
+            infoDiv.innerHTML = `⚠️ Already in: ${bookmarkedFolders.map(name => `<strong>${escapeHtml(name)}</strong>`).join(', ')}`;
+            infoDiv.style.display = 'block';
+        }
+    } else {
+        const infoDiv = document.getElementById('bookmarkInfo');
+        if (infoDiv) {
+            infoDiv.style.display = 'none';
+        }
+    }
 
     modal.style.display = 'flex';
 }
@@ -48,6 +87,11 @@ async function openBookmarkModal(event, recipeId, recipeName) {
 function closeBookmarkModal() {
     document.getElementById('bookmarkModal').style.display = 'none';
     resetRating();
+    // Hide info message
+    const infoDiv = document.getElementById('bookmarkInfo');
+    if (infoDiv) {
+        infoDiv.style.display = 'none';
+    }
 }
 
 function resetRating() {
@@ -185,6 +229,17 @@ async function saveBookmark(event) {
         if (res.ok) {
             closeBookmarkModal();
             showToast('Recipe bookmarked successfully! ✓', 'success');
+
+            // Refresh search results if on search page to update bookmark status
+            const searchInput = document.getElementById('headerSearchInput');
+            if (searchInput && searchInput.value) {
+                executeSearch(searchInput.value);
+            }
+
+            // Refresh bookmarks if on bookmarks page
+            if (typeof loadBookmarks === 'function') {
+                loadBookmarks();
+            }
         } else {
             errorDiv.textContent = result.error || 'Failed to save bookmark';
             errorDiv.classList.add('show');

@@ -243,10 +243,18 @@
             }, 3000);
         }
 
-        function viewRecipe(recipeId) {
-            const bookmark = allBookmarks.find(b => b.recipe_id === recipeId);
-            if (bookmark) {
-                window.location.href = `/search?query=${encodeURIComponent(bookmark.recipe_name)}`;
+        async function viewRecipe(recipeId) {
+            try {
+                const res = await fetch(`/api/recipes/${recipeId}`);
+                if (!res.ok) {
+                    throw new Error('Failed to fetch recipe');
+                }
+                const recipe = await res.json();
+                // All recipes on bookmarks page are already bookmarked
+                openModal(recipe, true);
+            } catch (err) {
+                console.error('Failed to load recipe:', err);
+                showToast('Failed to load recipe', 'error');
             }
         }
 

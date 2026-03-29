@@ -1,6 +1,7 @@
 import pickle
 import numpy as np
 import os
+from datetime import datetime, timezone, timedelta
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -24,11 +25,26 @@ login_manager.login_view = 'login_page'
 with open('resource/recipe_search_engine.pkl', 'rb') as f:
     search_engine = pickle.load(f)
 
+with open('resource/recipes.pkl', 'rb') as f:
+    recipes_df_full = pickle.load(f)
+
 with open('resource/image_collection.pkl', 'rb') as f:
     image_collection = pickle.load(f)
 
 with open('resource/spell_collection.pkl', 'rb') as f:
     spell_checker = pickle.load(f)
+
+# Thailand timezone (UTC+7)
+THAILAND_TZ = timezone(timedelta(hours=7))
+
+def convert_to_thailand_time(utc_datetime):
+    """Convert UTC datetime to Thailand timezone (UTC+7)"""
+    if utc_datetime is None:
+        return None
+    # Assume input is in UTC if it's naive (no timezone info)
+    if utc_datetime.tzinfo is None:
+        utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
+    return utc_datetime.astimezone(THAILAND_TZ)
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -76,7 +92,7 @@ def api_search():
 
     suggested_query = " ".join(corrected_words)
 
-    results_df = search_engine.search(query, top_k=10)
+    results_df = search_engine.search(suggested_query, top_k=10)
 
     print("DataFrame columns:", results_df.columns.tolist())
 
@@ -101,6 +117,29 @@ def api_search():
         "suggested_query": suggested_query if has_typo else "",
         "results": results
     })
+
+@app.route('/api/recipes/<int:recipe_id>', methods=['GET'])
+@login_required
+def get_recipe_detail(recipe_id):
+    recipe_data = recipes_df_full[recipes_df_full['RecipeId'] == recipe_id]
+
+    if recipe_data.empty:
+        return jsonify({'error': 'Recipe not found'}), 404
+
+    recipe = recipe_data.iloc[0].to_dict()
+
+    rid = recipe.get('RecipeId')
+    if rid:
+        image_urls = image_collection.get_urls(rid)
+        recipe['Images'] = image_urls[0] if image_urls else ''
+    else:
+        recipe['Images'] = ''
+
+    for key, value in recipe.items():
+        if isinstance(value, float) and np.isnan(value):
+            recipe[key] = None
+
+    return jsonify(recipe)
 
 @app.route('/login')
 def login_page():
@@ -194,7 +233,7 @@ def get_folders():
         'description': f.description,
         'icon': f.icon,
         'bookmark_count': len(f.bookmarks),
-        'created_at': f.created_at.isoformat() if f.created_at else None
+        'created_at': convert_to_thailand_time(f.created_at).isoformat() if f.created_at else None
     } for f in folders])
 
 @app.route('/api/folders', methods=['POST'])
@@ -229,7 +268,7 @@ def create_folder():
             'description': folder.description,
             'icon': folder.icon,
             'bookmark_count': 0,
-            'created_at': folder.created_at.isoformat()
+            'created_at': convert_to_thailand_time(folder.created_at).isoformat() if folder.created_at else None
         }
     }), 201
 
@@ -265,7 +304,7 @@ def update_folder(folder_id):
             'description': folder.description,
             'icon': folder.icon,
             'bookmark_count': len(folder.bookmarks),
-            'created_at': folder.created_at.isoformat()
+            'created_at': convert_to_thailand_time(folder.created_at).isoformat() if folder.created_at else None
         }
     })
 
@@ -298,7 +337,7 @@ def get_folder_bookmarks(folder_id):
         'recipe_name': b.recipe_name,
         'user_rating': b.user_rating,
         'notes': b.notes,
-        'created_at': b.created_at.isoformat() if b.created_at else None
+        'created_at': convert_to_thailand_time(b.created_at).isoformat() if b.created_at else None
     } for b in bookmarks])
 
 @app.route('/api/bookmarks', methods=['POST'])
@@ -376,7 +415,7 @@ def get_all_bookmarks():
             'folder_id': b.folder_id,
             'folder_name': folder.name if folder else 'Unknown',
             'folder_icon': folder.icon if folder else '📁',
-            'created_at': b.created_at.isoformat() if b.created_at else None
+            'created_at': convert_to_thailand_time(b.created_at).isoformat() if b.created_at else None
         })
 
     return jsonify(result)

@@ -596,6 +596,22 @@ main {
     display: block;
 }
 
+.bookmark-form .info-message {
+    background: #fef3c7;
+    color: #92400e;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    margin-top: 1rem;
+    display: none;
+    text-align: center;
+    border: 1px solid #fbbf24;
+}
+
+.bookmark-form .info-message strong {
+    font-weight: 600;
+}
+
 .meta-value {
   font-size: 0.9rem;
   color: var(--text);
