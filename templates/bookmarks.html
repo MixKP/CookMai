@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Bookmarks — CookMai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/bookmarks.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a class="brand" href="/">
+                <div class="brand-bubble">🍳</div>
+                <span class="brand-text">CookMai</span>
+            </a>
+
+            <div class="brand-cooking">
+                <span class="cooking-icon">🔖</span>
+                <span class="cooking-label">My Bookmarks</span>
+            </div>
+
+            <div class="user-menu">
+                <a href="/folders" class="folders-link">📁 My Folders</a>
+                <a href="/bookmarks" class="folders-link">🔖 My Bookmarks</a>
+                <span class="user-greeting">Hi, <span id="username"></span></span>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="bookmarks-header">
+            <h1>My Bookmarked Recipes</h1>
+            <div class="bookmarks-stats" id="bookmarksStats"></div>
+        </div>
+
+        <div id="spinner" class="spinner"><span class="spinner-ring"></span></div>
+
+        <div id="noBookmarks" class="no-bookmarks" style="display: none;">
+            <div class="no-bookmarks-icon">🔖</div>
+            <h3>No bookmarks yet</h3>
+            <p>Start bookmarking your favorite recipes to see them here!</p>
+            <a href="/" class="btn-primary">Browse Recipes</a>
+        </div>
+
+        <div id="bookmarksList" class="bookmarks-list"></div>
+    </main>
+
+    <div id="recipeModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <img id="modalImg" class="modal-hero-img" src="" alt="">
+            <div class="modal-body">
+                <h2 id="modalTitle" class="modal-title"></h2>
+
+                <div class="modal-info-section">
+                    <div id="modalDescription" class="modal-description"></div>
+                    <div class="modal-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Category:</span>
+                            <span id="modalCategory" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Prep:</span>
+                            <span id="modalPrepTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Cook:</span>
+                            <span id="modalCookTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Total:</span>
+                            <span id="modalTotalTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Servings:</span>
+                            <span id="modalServings" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item" id="ratingContainer">
+                            <span class="meta-label">Rating:</span>
+                            <span id="modalRating" class="meta-value"></span>
+                        </div>
+                    </div>
+                    <button id="modalBookmarkBtn" class="btn-bookmark-large" onclick="">
+                        🔖 Bookmark this Recipe
+                    </button>
+                </div>
+
+                <div class="modal-cols">
+                    <div>
+                        <div class="col-label">Ingredients</div>
+                        <ul id="modalIngredients"></ul>
+                    </div>
+                    <div>
+                        <div class="col-label">Instructions</div>
+                        <ol id="modalInstructions"></ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/common.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
+    <script>
+        let allBookmarks = [];
+
+        async function loadBookmarks() {
+            try {
+                const res = await fetch('/api/bookmarks/all');
+                allBookmarks = await res.json();
+
+                document.getElementById('spinner').style.display = 'none';
+
+                if (allBookmarks.length === 0) {
+                    document.getElementById('noBookmarks').style.display = 'block';
+                    document.getElementById('bookmarksList').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('noBookmarks').style.display = 'none';
+                document.getElementById('bookmarksList').style.display = 'grid';
+
+                renderBookmarks();
+            } catch (err) {
+                console.error('Failed to load bookmarks:', err);
+                document.getElementById('spinner').style.display = 'none';
+                document.getElementById('noBookmarks').style.display = 'block';
+            }
+        }
+
+        function renderBookmarks() {
+            const list = document.getElementById('bookmarksList');
+            const stats = document.getElementById('bookmarksStats');
+
+            const avgRating = allBookmarks.reduce((sum, b) => sum + (b.user_rating || 0), 0) / allBookmarks.length;
+
+            stats.innerHTML = `
+                <span class="stat-item">📚 ${allBookmarks.length} bookmark${allBookmarks.length !== 1 ? 's' : ''}</span>
+                <span class="stat-item">⭐ Average rating: ${avgRating.toFixed(1)} / 5</span>
+            `;
+
+            list.innerHTML = allBookmarks.map((bookmark, i) => {
+                const rating = bookmark.user_rating || 0;
+                const stars = renderStars(rating);
+
+                return `
+                    <div class="bookmark-card" style="animation-delay: ${i * 40}ms" onclick="viewRecipe(${bookmark.recipe_id})">
+                        <div class="bookmark-header">
+                            <div class="bookmark-folder">
+                                <span class="folder-icon">${bookmark.folder_icon}</span>
+                                <span class="folder-name">${escapeHtml(bookmark.folder_name)}</span>
+                            </div>
+                            <div class="bookmark-rating">
+                                <span class="stars">${stars}</span>
+                                <span class="rating-number">${rating}/5</span>
+                            </div>
+                        </div>
+                        <h3 class="bookmark-name">${escapeHtml(bookmark.recipe_name)}</h3>
+                        <button class="btn-remove" onclick="removeBookmark(event, ${bookmark.id}, '${escapeHtml(bookmark.recipe_name)}')">
+                            🗑️ Remove
+                        </button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function removeBookmark(event, bookmarkId, recipeName) {
+            event.stopPropagation();
+
+            const card = event.target.closest('.bookmark-card');
+            card.style.transform = 'scale(0.95)';
+            card.style.opacity = '0.5';
+
+            try {
+                const res = await fetch(`/api/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showToast(`Removed "${recipeName}" from bookmarks`, 'success');
+                    loadBookmarks();
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to remove bookmark', 'error');
+                    card.style.transform = '';
+                    card.style.opacity = '';
+                }
+            } catch (err) {
+                showToast('Network error. Please try again.', 'error');
+                card.style.transform = '';
+                card.style.opacity = '';
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            const existingToast = document.querySelector('.toast');
+            if (existingToast) {
+                existingToast.remove();
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.innerHTML = `
+                <span>${type === 'success' ? '✓' : '✕'}</span>
+                <span>${message}</span>
+            `;
+
+            document.body.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('removing');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        async function viewRecipe(recipeId) {
+            try {
+                const recipe = await fetchRecipe(recipeId);
+                openModal(recipe, true);
+            } catch (err) {
+                console.error('Failed to load recipe:', err);
+                showToast('Failed to load recipe', 'error');
+            }
+        }
+
+        (async function() {
+            await checkAuth();
+            await loadBookmarks();
+        })();
+
+        (async function() {
+            currentUser = await checkAuth();
+            await loadBookmarks();
+        })();
+    </script>
+</body>
+
+</html>

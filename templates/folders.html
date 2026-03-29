@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Folders — CookMai</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/base.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/folders.css') }}">
+</head>
+
+<body>
+    <header>
+        <div class="header-inner">
+            <a class="brand" href="/">
+                <div class="brand-bubble">🍳</div>
+                <span class="brand-text">CookMai</span>
+            </a>
+
+            <div class="brand-cooking">
+                <span class="cooking-icon">📁</span>
+                <span class="cooking-label">My Folders</span>
+            </div>
+
+            <div class="user-menu">
+                <a href="/folders" class="folders-link">📁 My Folders</a>
+                <span class="user-greeting">Hi, <span id="username"></span></span>
+                <button id="logoutBtn" class="logout-btn">Logout</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div class="folders-header">
+            <h1>My Recipe Folders</h1>
+            <div class="filters-bar">
+                <div class="search-box">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    <input id="searchInput" type="text" placeholder="Search folders...">
+                </div>
+                <select id="sortSelect" class="sort-select">
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="name">Name (A-Z)</option>
+                    <option value="name_desc">Name (Z-A)</option>
+                    <option value="count">Most Bookmarks</option>
+                </select>
+                <button id="createFolderBtn" class="btn-primary">
+                    <span>+</span>
+                    <span>New Folder</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="foldersGrid" class="folders-grid"></div>
+
+        <div id="noFolders" class="no-folders" style="display: none;">
+            <div class="no-folders-icon">📁</div>
+            <h3>No folders yet</h3>
+            <p>Create your first folder to start organizing your favorite recipes</p>
+        </div>
+    </main>
+
+    <div id="folderModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeFolderModal()">✕</button>
+            <h2 id="folderModalTitle" class="modal-title">Create New Folder</h2>
+
+            <form id="folderForm" class="folder-form">
+                <input type="hidden" id="folderId">
+
+                <div class="form-group">
+                    <label for="folderName">Folder Name *</label>
+                    <input id="folderName" type="text" required placeholder="e.g., Favorite Desserts" maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="folderDescription">Description (optional)</label>
+                    <textarea id="folderDescription" rows="2" placeholder="What's this folder for?"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Choose Icon</label>
+                    <div class="icon-picker" id="iconPicker">
+                        <div class="icon-option selected" data-icon="📁" title="Folder">📁</div>
+                        <div class="icon-option" data-icon="⭐" title="Star">⭐</div>
+                        <div class="icon-option" data-icon="❤️" title="Heart">❤️</div>
+                        <div class="icon-option" data-icon="🍳" title="Cooking">🍳</div>
+                        <div class="icon-option" data-icon="🍰" title="Dessert">🍰</div>
+                        <div class="icon-option" data-icon="🍕" title="Pizza">🍕</div>
+                        <div class="icon-option" data-icon="🥗" title="Salad">🥗</div>
+                        <div class="icon-option" data-icon="🍜" title="Noodles">🍜</div>
+                    </div>
+                </div>
+
+                <div id="folderError" class="error-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeFolderModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Create Folder</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="deleteModal" class="modal-overlay">
+        <div class="modal-box modal-small">
+            <h2>Delete Folder?</h2>
+            <p>Are you sure you want to delete <strong>"<span id="deleteFolderName"></span>"</strong>? This action cannot be undone and will remove all bookmarks in this folder.</p>
+
+            <div id="deleteError" class="error-message"></div>
+
+            <div class="form-actions">
+                <button type="button" class="btn-secondary" onclick="closeDeleteModal()">Cancel</button>
+                <button id="confirmDeleteBtn" class="btn-danger">Delete Folder</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="bookmarksModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeBookmarksModal()">✕</button>
+            <h2 id="bookmarksModalTitle" class="modal-title">Folder Bookmarks</h2>
+
+            <div id="bookmarksModalSpinner" class="spinner"><span class="spinner-ring"></span></div>
+
+            <div id="bookmarksModalContent" class="bookmarks-modal-content"></div>
+
+            <div id="noBookmarksModal" class="no-bookmarks-modal" style="display: none;">
+                <div class="no-bookmarks-icon">🔖</div>
+                <h3>No bookmarks yet</h3>
+                <p>Search and bookmark recipes to see them here!</p>
+                <a href="/" class="btn-primary">Browse Recipes</a>
+            </div>
+        </div>
+    </div>
+
+    <div id="recipeModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <img id="modalImg" class="modal-hero-img" src="" alt="">
+            <div class="modal-body">
+                <h2 id="modalTitle" class="modal-title"></h2>
+
+                <div class="modal-info-section">
+                    <div id="modalDescription" class="modal-description"></div>
+                    <div class="modal-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Category:</span>
+                            <span id="modalCategory" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Prep:</span>
+                            <span id="modalPrepTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Cook:</span>
+                            <span id="modalCookTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Total:</span>
+                            <span id="modalTotalTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Servings:</span>
+                            <span id="modalServings" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item" id="ratingContainer">
+                            <span class="meta-label">Rating:</span>
+                            <span id="modalRating" class="meta-value"></span>
+                        </div>
+                    </div>
+                    <button id="modalBookmarkBtn" class="btn-bookmark-large" onclick="">
+                        🔖 Bookmark this Recipe
+                    </button>
+                </div>
+
+                <div class="modal-cols">
+                    <div>
+                        <div class="col-label">Ingredients</div>
+                        <ul id="modalIngredients"></ul>
+                    </div>
+                    <div>
+                        <div class="col-label">Instructions</div>
+                        <ol id="modalInstructions"></ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="suggestionsModal" class="modal-overlay">
+        <div class="modal-box modal-large">
+            <button class="modal-close" onclick="closeSuggestionsModal()">✕</button>
+            <h2 id="suggestionsModalTitle" class="modal-title">✨ ML Suggestions</h2>
+
+            <div id="suggestionsModalSpinner" class="spinner"><span class="spinner-ring"></span></div>
+
+            <div id="suggestionsModalError" class="error-message" style="display: none;"></div>
+
+            <div id="suggestionsModalContent" class="suggestions-modal-content" style="display: none;">
+                <p id="suggestionsModalSubtitle" class="suggestions-subtitle"></p>
+                <div id="suggestionsGrid" class="suggestions-grid"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="bookmarkModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeBookmarkModal()">✕</button>
+            <h2 class="modal-title">Bookmark Recipe</h2>
+
+            <form class="bookmark-form" onsubmit="saveBookmark(event); return false;">
+                <div class="bookmark-recipe-info">
+                    <strong id="bookmarkRecipeName"></strong>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookmarkFolderSelect">Select Folder *</label>
+                    <select id="bookmarkFolderSelect" required>
+                        <option value="">Select a folder...</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Your Rating *</label>
+                    <div class="star-rating" id="starRating">
+                        <div class="star-wrapper" data-rating="1" onmousemove="handleStarHover(event, 1)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 1)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="2" onmousemove="handleStarHover(event, 2)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 2)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="3" onmousemove="handleStarHover(event, 3)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 3)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="4" onmousemove="handleStarHover(event, 4)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 4)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="5" onmousemove="handleStarHover(event, 5)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 5)">
+                            <span class="star">☆</span>
+                        </div>
+                    </div>
+                    <div class="star-rating-label" id="ratingLabel">Select a rating</div>
+                    <input type="hidden" id="bookmarkRating" value="0">
+                </div>
+
+                <div id="bookmarkInfo" class="info-message" style="display: none;"></div>
+
+                <div id="bookmarkError" class="error-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeBookmarkModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Bookmark</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/common.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/bookmark.js') }}"></script>
+    <script>
+        let folders = [];
+        let folderToDelete = null;
+        let selectedIcon = '📁';
+
+        async function loadFolders() {
+            try {
+                const res = await fetch('/api/folders');
+                const data = await res.json();
+                folders = data;
+                renderFolders();
+            } catch (err) {
+                console.error('Failed to load folders:', err);
+            }
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return 'Unknown';
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        function renderFolders() {
+            const grid = document.getElementById('foldersGrid');
+            const noFolders = document.getElementById('noFolders');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const sortBy = document.getElementById('sortSelect').value;
+
+            let filteredFolders = folders.filter(f =>
+                f.name.toLowerCase().includes(searchTerm) ||
+                (f.description && f.description.toLowerCase().includes(searchTerm))
+            );
+
+            filteredFolders.sort((a, b) => {
+                switch (sortBy) {
+                    case 'oldest':
+                        return new Date(a.created_at) - new Date(b.created_at);
+                    case 'name':
+                        return a.name.localeCompare(b.name);
+                    case 'name_desc':
+                        return b.name.localeCompare(a.name);
+                    case 'count':
+                        return b.bookmark_count - a.bookmark_count;
+                    default: // newest
+                        return new Date(b.created_at) - new Date(a.created_at);
+                }
+            });
+
+            if (filteredFolders.length === 0) {
+                grid.style.display = 'none';
+                noFolders.style.display = 'block';
+                return;
+            }
+
+            grid.style.display = 'grid';
+            noFolders.style.display = 'none';
+
+            grid.innerHTML = filteredFolders.map(folder => `
+                <div class="folder-card" data-folder-id="${folder.id}">
+                    <div class="folder-content">
+                        <div class="folder-header">
+                            <div class="folder-title">
+                                <div class="folder-icon-large">${folder.icon}</div>
+                                <h3 class="folder-name">${escapeHtml(folder.name)}</h3>
+                            </div>
+                            <div style="position: relative;">
+                                <button class="folder-actions-btn" onclick="toggleActionsMenu(${folder.id}, event)">⋯</button>
+                                <div id="actionsMenu-${folder.id}" class="folder-actions-menu">
+                                    <div class="action-item" onclick="editFolder(${folder.id})">
+                                        <span>✏️</span> Edit
+                                    </div>
+                                    <div class="action-item" onclick="getAISuggestions(${folder.id}, '${escapeHtml(folder.name)}', ${folder.bookmark_count})">
+                                        <span>✨</span> Get ML Suggestions
+                                    </div>
+                                    <div class="action-item" onclick="showDeleteModal(${folder.id}, '${escapeHtml(folder.name)}')">
+                                        <span>🗑️</span> Delete
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        ${folder.description ? `<p class="folder-description">${escapeHtml(folder.description)}</p>` : ''}
+                        <div class="folder-stats">
+                            <div class="stat-item">
+                                <span class="stat-icon">📌</span>
+                                <span>${folder.bookmark_count} bookmark${folder.bookmark_count !== 1 ? 's' : ''}</span>
+                            </div>
+                        </div>
+                        <div class="folder-meta">
+                            <span class="last-updated">Created ${formatDate(folder.created_at)}</span>
+                            <button class="btn-view-bookmarks" onclick="viewBookmarks(${folder.id}, '${escapeHtml(folder.name)}')">
+                                View →
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function toggleActionsMenu(folderId, event) {
+            event.stopPropagation();
+            const menu = document.getElementById(`actionsMenu-${folderId}`);
+            document.querySelectorAll('.folder-actions-menu').forEach(m => {
+                if (m !== menu) m.classList.remove('show');
+            });
+            menu.classList.toggle('show');
+        }
+
+        document.addEventListener('click', () => {
+            document.querySelectorAll('.folder-actions-menu').forEach(m => m.classList.remove('show'));
+        });
+
+        function openFolderModal(folder = null) {
+            const modal = document.getElementById('folderModal');
+            const title = document.getElementById('folderModalTitle');
+            const form = document.getElementById('folderForm');
+
+            if (folder) {
+                title.textContent = 'Edit Folder';
+                document.getElementById('folderId').value = folder.id;
+                document.getElementById('folderName').value = folder.name;
+                document.getElementById('folderDescription').value = folder.description || '';
+                selectIcon(folder.icon || '📁');
+                document.querySelector('#folderForm button[type="submit"]').textContent = 'Save Changes';
+            } else {
+                title.textContent = 'Create New Folder';
+                form.reset();
+                document.getElementById('folderId').value = '';
+                selectIcon('📁');
+                document.querySelector('#folderForm button[type="submit"]').textContent = 'Create Folder';
+            }
+
+            document.getElementById('folderError').classList.remove('show');
+            modal.style.display = 'flex';
+        }
+
+        function closeFolderModal() {
+            document.getElementById('folderModal').style.display = 'none';
+        }
+
+        function selectIcon(icon) {
+            selectedIcon = icon;
+            document.querySelectorAll('.icon-option').forEach(opt => {
+                opt.classList.toggle('selected', opt.dataset.icon === icon);
+            });
+        }
+
+        document.getElementById('iconPicker').addEventListener('click', (e) => {
+            const option = e.target.closest('.icon-option');
+            if (option) selectIcon(option.dataset.icon);
+        });
+
+        function editFolder(folderId) {
+            const folder = folders.find(f => f.id === folderId);
+            if (folder) {
+                openFolderModal(folder);
+            }
+        }
+
+        async function saveFolder(e) {
+            e.preventDefault();
+
+            const folderId = document.getElementById('folderId').value;
+            const name = document.getElementById('folderName').value.trim();
+            const description = document.getElementById('folderDescription').value.trim();
+            const errorDiv = document.getElementById('folderError');
+
+            errorDiv.classList.remove('show');
+
+            const data = {
+                name,
+                description,
+                icon: selectedIcon
+            };
+
+            try {
+                const url = folderId ? `/api/folders/${folderId}` : '/api/folders';
+                const method = folderId ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+
+                const result = await res.json();
+
+                if (res.ok) {
+                    closeFolderModal();
+                    loadFolders();
+                } else {
+                    errorDiv.textContent = result.error || 'Failed to save folder';
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        function showDeleteModal(folderId, folderName) {
+            folderToDelete = folderId;
+            document.getElementById('deleteFolderName').textContent = folderName;
+            document.getElementById('deleteModal').style.display = 'flex';
+            document.getElementById('deleteError').classList.remove('show');
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            folderToDelete = null;
+        }
+
+        async function confirmDelete() {
+            if (!folderToDelete) return;
+
+            const errorDiv = document.getElementById('deleteError');
+
+            try {
+                const res = await fetch(`/api/folders/${folderToDelete}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    closeDeleteModal();
+                    loadFolders();
+                } else {
+                    const result = await res.json();
+                    errorDiv.textContent = result.error || 'Failed to delete folder';
+                    errorDiv.classList.add('show');
+                }
+            } catch (err) {
+                errorDiv.textContent = 'Network error. Please try again.';
+                errorDiv.classList.add('show');
+            }
+        }
+
+        async function viewBookmarks(folderId, folderName) {
+            const modal = document.getElementById('bookmarksModal');
+            const title = document.getElementById('bookmarksModalTitle');
+            const spinner = document.getElementById('bookmarksModalSpinner');
+            const content = document.getElementById('bookmarksModalContent');
+            const noBookmarks = document.getElementById('noBookmarksModal');
+
+            title.textContent = `${folderName} - Bookmarks`;
+            spinner.style.display = 'block';
+            content.innerHTML = '';
+            noBookmarks.style.display = 'none';
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/folders/${folderId}/bookmarks`);
+                const bookmarks = await res.json();
+
+                spinner.style.display = 'none';
+
+                if (bookmarks.length === 0) {
+                    noBookmarks.style.display = 'block';
+                    return;
+                }
+
+                noBookmarks.style.display = 'none';
+                content.innerHTML = await renderBookmarksList(bookmarks, folderId, folderName);
+            } catch (err) {
+                console.error('Failed to load bookmarks:', err);
+                spinner.style.display = 'none';
+                noBookmarks.style.display = 'block';
+            }
+        }
+
+        let currentFolderId = null;
+        let currentFolderName = null;
+
+        async function renderBookmarksList(bookmarks, folderId, folderName) {
+            // Store current folder info
+            currentFolderId = folderId;
+            currentFolderName = folderName;
+
+            // Fetch recipe details for all bookmarks by RecipeId
+            const recipePromises = bookmarks.map(async (bookmark) => {
+                try {
+                    const res = await fetch(`/api/recipes/${bookmark.recipe_id}`);
+                    if (!res.ok) {
+                        return null;
+                    }
+                    return await res.json();
+                } catch {
+                    return null;
+                }
+            });
+
+            const recipes = await Promise.all(recipePromises);
+
+            return bookmarks.map((bookmark, i) => {
+                const rating = bookmark.user_rating || 0;
+                const stars = renderStars(rating);
+                const recipe = recipes[i];
+
+                return `
+                    <div class="bookmark-item-card" onclick="viewRecipeFromFolder(${bookmark.recipe_id}, '${escapeHtml(bookmark.recipe_name)}', ${bookmark.id})">
+                        <div class="bookmark-item-header">
+                            <div class="bookmark-item-rating">
+                                <span class="stars">${stars}</span>
+                                <span class="rating-number">${rating}/5</span>
+                            </div>
+                            <span class="bookmark-item-date">${bookmark.created_at ? formatDate(bookmark.created_at) : 'Unknown'}</span>
+                            <button class="bookmark-delete-btn" onclick="deleteBookmark(event, ${bookmark.id}, '${escapeHtml(bookmark.recipe_name)}')" title="Remove from folder">
+                                ✕
+                            </button>
+                        </div>
+                        <div class="bookmark-item-content">
+                            ${recipe && recipe.Images ? `
+                                <img class="bookmark-item-image" src="${getImage(recipe.Images)}" alt="${escapeHtml(bookmark.recipe_name)}" loading="lazy">
+                            ` : ''}
+                            <div class="bookmark-item-info">
+                                <h3 class="bookmark-item-name">${escapeHtml(bookmark.recipe_name)}</h3>
+                                ${recipe && recipe.Description ? `
+                                    <p class="bookmark-item-description">${escapeHtml(recipe.Description)}</p>
+                                ` : ''}
+                                ${recipe ? `
+                                    <div class="bookmark-item-meta">
+                                        ${recipe.RecipeCategory ? `<span class="meta-badge">${escapeHtml(recipe.RecipeCategory)}</span>` : ''}
+                                        ${recipe.AggregatedRating ? `<span class="meta-badge">⭐ ${recipe.AggregatedRating.toFixed(1)}</span>` : ''}
+                                        ${recipe.RecipeServings ? `<span class="meta-badge">🍽️ ${recipe.RecipeServings}</span>` : ''}
+                                    </div>
+                                ` : `
+                                    <p class="bookmark-item-recipe-id">Recipe ID: ${bookmark.recipe_id}</p>
+                                `}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function viewRecipeFromFolder(recipeId, recipeName, bookmarkId) {
+            try {
+                const recipe = await fetchRecipe(recipeId);
+
+                let otherFolders = [];
+                try {
+                    const bookmarksRes = await fetch('/api/bookmarks/all');
+                    if (bookmarksRes.ok) {
+                        const allBookmarks = await bookmarksRes.json();
+                        otherFolders = allBookmarks
+                            .filter(b => b.recipe_id === recipeId && b.folder_name !== currentFolderName)
+                            .map(b => b.folder_name);
+                    }
+                } catch (err) {
+                    console.error('Failed to check other folders:', err);
+                }
+
+                openModalWithoutBookmark(recipe, otherFolders, bookmarkId);
+            } catch (err) {
+                console.error('Failed to load recipe:', err);
+                showToast('Failed to load recipe', 'error');
+            }
+        }
+
+        async function viewRecipe(recipeId) {
+            try {
+                const recipe = await fetchRecipe(recipeId);
+                openModal(recipe);
+            } catch (err) {
+                console.error('Failed to load recipe:', err);
+                showToast('Failed to load recipe', 'error');
+            }
+        }
+
+        function openModalWithoutBookmark(recipe, otherFolders = [], bookmarkId = null) {
+            document.getElementById('modalTitle').textContent = recipe.Name;
+            document.getElementById('modalImg').src = getImage(recipe.Images);
+
+            const desc = document.getElementById('modalDescription');
+            const description = recipe.Description;
+            if (description && description !== 'Make and share this ' + recipe.Name + ' recipe from Food.com.') {
+                desc.textContent = description;
+                desc.style.display = 'block';
+            } else {
+                desc.style.display = 'none';
+            }
+
+            const category = recipe.RecipeCategory;
+            document.getElementById('modalCategory').textContent = category || '—';
+
+            document.getElementById('modalPrepTime').textContent = formatDuration(recipe.PrepTime);
+            document.getElementById('modalCookTime').textContent = formatDuration(recipe.CookTime);
+            document.getElementById('modalTotalTime').textContent = formatDuration(recipe.TotalTime);
+
+            document.getElementById('modalServings').textContent = recipe.RecipeServings ? `${recipe.RecipeServings} people` : '—';
+
+            const ratingContainer = document.getElementById('ratingContainer');
+            const ratingEl = document.getElementById('modalRating');
+            if (recipe.AggregatedRating && recipe.AggregatedRating > 0) {
+                ratingEl.textContent = `⭐ ${recipe.AggregatedRating.toFixed(1)} (${recipe.ReviewCount || 0} reviews)`;
+                ratingContainer.style.display = 'flex';
+            } else {
+                ratingContainer.style.display = 'none';
+            }
+
+            const ingredients = parseArray(recipe.RecipeIngredientParts);
+            if (ingredients.length > 0) {
+                document.getElementById('modalIngredients').innerHTML = ingredients.map(i => `<li>${i}</li>`).join('');
+            } else {
+                document.getElementById('modalIngredients').innerHTML = '<li style="color: #999;">No ingredients listed</li>';
+            }
+
+            const instructions = parseArray(recipe.RecipeInstructions);
+            if (instructions.length > 0) {
+                document.getElementById('modalInstructions').innerHTML = instructions.map(s => `<li>${s}</li>`).join('');
+            } else {
+                document.getElementById('modalInstructions').innerHTML = '<li style="color: #999;">No instructions provided</li>';
+            }
+
+            // Update bookmark button to show "Remove from Folder" action
+            const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+            bookmarkBtn.textContent = '🗑️ Remove from Folder';
+            bookmarkBtn.disabled = false;
+            bookmarkBtn.style.background = '#fee2e2';
+            bookmarkBtn.style.color = '#991b1b';
+            bookmarkBtn.style.borderColor = '#dc2626';
+            bookmarkBtn.style.cursor = 'pointer';
+            bookmarkBtn.style.display = 'block';
+            bookmarkBtn.onclick = () => {
+                if (bookmarkId && confirm(`Remove "${recipe.Name}" from ${currentFolderName || 'this folder'}?`)) {
+                    deleteBookmarkFromModal(bookmarkId, recipe.Name);
+                }
+            };
+
+            // Remove any existing bookmark info message
+            const existingInfo = document.getElementById('alreadyBookmarkedInfo');
+            if (existingInfo) existingInfo.remove();
+
+            document.getElementById('recipeModal').style.display = 'flex';
+        }
+
+        async function deleteBookmarkFromModal(bookmarkId, recipeName) {
+            try {
+                const res = await fetch(`/api/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showToast(`Removed "${recipeName}" from folder`, 'success');
+                    closeModal();
+                    // Refresh the current folder view
+                    if (currentFolderId) {
+                        await viewBookmarks(currentFolderId, currentFolderName);
+                    }
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to remove recipe', 'error');
+                }
+            } catch (err) {
+                console.error('Failed to delete bookmark:', err);
+                showToast('Failed to remove recipe', 'error');
+            }
+        }
+
+        function closeBookmarksModal() {
+            document.getElementById('bookmarksModal').style.display = 'none';
+            // Reset bookmark button visibility for next time
+            document.getElementById('modalBookmarkBtn').style.display = 'block';
+        }
+
+        function closeModal() {
+            // Reset bookmark button to default state
+            const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+            bookmarkBtn.textContent = '🔖 Bookmark this Recipe';
+            bookmarkBtn.disabled = false;
+            bookmarkBtn.style.background = '';
+            bookmarkBtn.style.color = '';
+            bookmarkBtn.style.borderColor = '';
+            bookmarkBtn.style.cursor = '';
+            bookmarkBtn.onclick = null;
+
+            // Remove bookmark info if exists
+            const bookmarkInfo = document.getElementById('alreadyBookmarkedInfo');
+            if (bookmarkInfo) bookmarkInfo.remove();
+
+            document.getElementById('recipeModal').style.display = 'none';
+        }
+
+        async function getAISuggestions(folderId, folderName, bookmarkCount) {
+            // Close any open menus
+            document.querySelectorAll('.folder-actions-menu').forEach(m => m.classList.remove('show'));
+
+            // Check if folder is empty
+            if (bookmarkCount === 0) {
+                alert('This folder is empty! Add some recipes first to get personalized suggestions.');
+                return;
+            }
+
+            // Show modal with spinner
+            const modal = document.getElementById('suggestionsModal');
+            const title = document.getElementById('suggestionsModalTitle');
+            const spinner = document.getElementById('suggestionsModalSpinner');
+            const content = document.getElementById('suggestionsModalContent');
+            const error = document.getElementById('suggestionsModalError');
+
+            title.textContent = `✨ ML Suggestions for "${folderName}"`;
+            spinner.style.display = 'block';
+            content.style.display = 'none';
+            error.style.display = 'none';
+
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/folders/${folderId}/suggestions`);
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.message || errorData.error || 'Failed to get suggestions');
+                }
+
+                const data = await res.json();
+                renderSuggestions(data);
+
+            } catch (err) {
+                console.error('Failed to get suggestions:', err);
+                spinner.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = err.message || 'Failed to get suggestions. Please try again.';
+            }
+        }
+
+        function renderSuggestions(data) {
+            const spinner = document.getElementById('suggestionsModalSpinner');
+            const content = document.getElementById('suggestionsModalContent');
+            const subtitle = document.getElementById('suggestionsModalSubtitle');
+            const grid = document.getElementById('suggestionsGrid');
+
+            spinner.style.display = 'none';
+            content.style.display = 'block';
+
+            if (!data.recommendations || data.recommendations.length === 0) {
+                grid.innerHTML = '<p class="no-suggestions">No recommendations available. Try adding more recipes to this folder!</p>';
+                return;
+            }
+
+            grid.innerHTML = data.recommendations.map((recipe, index) => {
+                const imageSrc = recipe.image || 'https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg';
+                const scorePercent = (recipe.recommendation_score * 100).toFixed(0);
+
+                // ML Evidence: Show breakdown of how score was calculated
+                const similarityPercent = (recipe.similarity_score * 100).toFixed(0);
+                const predictedPercent = (recipe.predicted_rating_score * 100).toFixed(0);
+
+                return `
+                    <div class="suggestion-card" onclick="viewRecipe(${recipe.recipe_id})" style="animation-delay: ${index * 50}ms">
+                        <div class="suggestion-image">
+                            <img src="${imageSrc}" alt="${escapeHtml(recipe.recipe_name)}" loading="lazy">
+                            <div class="suggestion-match-badge">
+                                <span class="match-icon">✨</span>
+                                <span class="match-text">${scorePercent}% match</span>
+                            </div>
+                        </div>
+                        <div class="suggestion-content">
+                            <h3 class="suggestion-title">${escapeHtml(recipe.recipe_name)}</h3>
+                            <div class="suggestion-meta">
+                                ${recipe.category ? `<span class="suggestion-category">${escapeHtml(recipe.category)}</span>` : ''}
+                                ${recipe.rating ? `<span class="suggestion-rating">⭐ ${recipe.rating.toFixed(1)}</span>` : ''}
+                            </div>
+                            <div class="suggestion-ml-evidence">
+                                <div class="evidence-item">
+                                    <span class="evidence-label">🍽️ Similar to your folder:</span>
+                                    <span class="evidence-bar">
+                                        <div class="evidence-fill" style="width: ${similarityPercent}%"></div>
+                                    </span>
+                                    <span class="evidence-value">${similarityPercent}%</span>
+                                </div>
+                                <div class="evidence-item">
+                                    <span class="evidence-label">🤖 ML predicted rating:</span>
+                                    <span class="evidence-bar">
+                                        <div class="evidence-fill evidence-fill-ml" style="width: ${predictedPercent}%"></div>
+                                    </span>
+                                    <span class="evidence-value">${predictedPercent}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeSuggestionsModal() {
+            document.getElementById('suggestionsModal').style.display = 'none';
+            document.getElementById('suggestionsGrid').innerHTML = '';
+        }
+
+        async function deleteBookmark(event, bookmarkId, recipeName) {
+            event.stopPropagation();
+
+            if (!confirm(`Remove "${recipeName}" from this folder?`)) {
+                return;
+            }
+
+            try {
+                const res = await fetch(`/api/bookmarks/${bookmarkId}`, {
+                    method: 'DELETE'
+                });
+
+                if (res.ok) {
+                    showToast('Recipe removed from folder ✓');
+                    // Refresh the current folder view
+                    const folderId = currentFolderId;
+                    await viewBookmarks(folderId, currentFolderName);
+                } else {
+                    const result = await res.json();
+                    showToast(result.error || 'Failed to remove recipe', 'error');
+                }
+            } catch (err) {
+                console.error('Failed to delete bookmark:', err);
+                showToast('Failed to remove recipe', 'error');
+            }
+        }
+
+        document.getElementById('createFolderBtn').addEventListener('click', () => openFolderModal());
+        document.getElementById('folderForm').addEventListener('submit', saveFolder);
+        document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+        document.getElementById('searchInput').addEventListener('input', renderFolders);
+        document.getElementById('sortSelect').addEventListener('change', renderFolders);
+
+        document.getElementById('folderModal').addEventListener('click', e => {
+            if (e.target.id === 'folderModal') closeFolderModal();
+        });
+
+        document.getElementById('deleteModal').addEventListener('click', e => {
+            if (e.target.id === 'deleteModal') closeDeleteModal();
+        });
+
+        document.getElementById('bookmarksModal').addEventListener('click', e => {
+            if (e.target.id === 'bookmarksModal') closeBookmarksModal();
+        });
+
+        document.getElementById('recipeModal').addEventListener('click', e => {
+            if (e.target.id === 'recipeModal') closeModal();
+        });
+
+        document.getElementById('bookmarkModal').addEventListener('click', e => {
+            if (e.target.id === 'bookmarkModal') closeBookmarkModal();
+        });
+
+        document.addEventListener('keydown', e => {
+            if (e.key === 'Escape') {
+                closeBookmarksModal();
+                closeModal();
+                closeBookmarkModal();
+            }
+        });
+
+        (async function() {
+            await checkAuth();
+            await loadFolders();
+        })();
+    </script>
+</body>
+
+</html>
