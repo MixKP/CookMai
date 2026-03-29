@@ -699,3 +699,7 @@ main {
     opacity: 1;
   }
 }
+/* Modal stacking order - bookmark modal should be on top */
+#bookmarkModal {
+    z-index: 1200 !important;
+}

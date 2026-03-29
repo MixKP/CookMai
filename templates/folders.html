@@ -197,6 +197,22 @@
         </div>
     </div>
 
+    <div id="suggestionsModal" class="modal-overlay">
+        <div class="modal-box modal-large">
+            <button class="modal-close" onclick="closeSuggestionsModal()">✕</button>
+            <h2 id="suggestionsModalTitle" class="modal-title">✨ AI Suggestions</h2>
+
+            <div id="suggestionsModalSpinner" class="spinner"><span class="spinner-ring"></span></div>
+
+            <div id="suggestionsModalError" class="error-message" style="display: none;"></div>
+
+            <div id="suggestionsModalContent" class="suggestions-modal-content" style="display: none;">
+                <p id="suggestionsModalSubtitle" class="suggestions-subtitle"></p>
+                <div id="suggestionsGrid" class="suggestions-grid"></div>
+            </div>
+        </div>
+    </div>
+
     <div id="bookmarkModal" class="modal-overlay">
         <div class="modal-box">
             <button class="modal-close" onclick="closeBookmarkModal()">✕</button>
@@ -353,6 +369,9 @@
                                 <div id="actionsMenu-${folder.id}" class="folder-actions-menu">
                                     <div class="action-item" onclick="editFolder(${folder.id})">
                                         <span>✏️</span> Edit
+                                    </div>
+                                    <div class="action-item" onclick="getAISuggestions(${folder.id}, '${escapeHtml(folder.name)}', ${folder.bookmark_count})">
+                                        <span>✨</span> Get AI Suggestions
                                     </div>
                                     <div class="action-item" onclick="showDeleteModal(${folder.id}, '${escapeHtml(folder.name)}')">
                                         <span>🗑️</span> Delete
@@ -785,6 +804,115 @@
             if (bookmarkInfo) bookmarkInfo.remove();
 
             document.getElementById('recipeModal').style.display = 'none';
+        }
+
+        async function getAISuggestions(folderId, folderName, bookmarkCount) {
+            // Close any open menus
+            document.querySelectorAll('.folder-actions-menu').forEach(m => m.classList.remove('show'));
+
+            // Check if folder is empty
+            if (bookmarkCount === 0) {
+                alert('This folder is empty! Add some recipes first to get personalized suggestions.');
+                return;
+            }
+
+            // Show modal with spinner
+            const modal = document.getElementById('suggestionsModal');
+            const title = document.getElementById('suggestionsModalTitle');
+            const spinner = document.getElementById('suggestionsModalSpinner');
+            const content = document.getElementById('suggestionsModalContent');
+            const error = document.getElementById('suggestionsModalError');
+
+            title.textContent = `✨ AI Suggestions for "${folderName}"`;
+            spinner.style.display = 'block';
+            content.style.display = 'none';
+            error.style.display = 'none';
+
+            modal.style.display = 'flex';
+
+            try {
+                const res = await fetch(`/api/folders/${folderId}/suggestions`);
+
+                if (!res.ok) {
+                    const errorData = await res.json();
+                    throw new Error(errorData.message || errorData.error || 'Failed to get suggestions');
+                }
+
+                const data = await res.json();
+                renderSuggestions(data);
+
+            } catch (err) {
+                console.error('Failed to get suggestions:', err);
+                spinner.style.display = 'none';
+                error.style.display = 'block';
+                error.textContent = err.message || 'Failed to get suggestions. Please try again.';
+            }
+        }
+
+        function renderSuggestions(data) {
+            const spinner = document.getElementById('suggestionsModalSpinner');
+            const content = document.getElementById('suggestionsModalContent');
+            const subtitle = document.getElementById('suggestionsModalSubtitle');
+            const grid = document.getElementById('suggestionsGrid');
+
+            spinner.style.display = 'none';
+            content.style.display = 'block';
+
+            subtitle.textContent = `Based on ${data.folder_size} recipe${data.folder_size !== 1 ? 's' : ''} in "${data.folder_name}" • Powered by LightGBM + TF-IDF + LSA + LDA`;
+
+            if (!data.recommendations || data.recommendations.length === 0) {
+                grid.innerHTML = '<p class="no-suggestions">No recommendations available. Try adding more recipes to this folder!</p>';
+                return;
+            }
+
+            grid.innerHTML = data.recommendations.map((recipe, index) => {
+                const imageSrc = recipe.image || 'https://upload.wikimedia.org/wikipedia/commons/1/14/No_Image_Available.jpg';
+                const scorePercent = (recipe.recommendation_score * 100).toFixed(0);
+
+                // ML Evidence: Show breakdown of how score was calculated
+                const similarityPercent = (recipe.similarity_score * 100).toFixed(0);
+                const predictedPercent = (recipe.predicted_rating_score * 100).toFixed(0);
+
+                return `
+                    <div class="suggestion-card" onclick="viewRecipe(${recipe.recipe_id})" style="animation-delay: ${index * 50}ms">
+                        <div class="suggestion-image">
+                            <img src="${imageSrc}" alt="${escapeHtml(recipe.recipe_name)}" loading="lazy">
+                            <div class="suggestion-match-badge">
+                                <span class="match-icon">✨</span>
+                                <span class="match-text">${scorePercent}% match</span>
+                            </div>
+                        </div>
+                        <div class="suggestion-content">
+                            <h3 class="suggestion-title">${escapeHtml(recipe.recipe_name)}</h3>
+                            <div class="suggestion-meta">
+                                ${recipe.category ? `<span class="suggestion-category">${escapeHtml(recipe.category)}</span>` : ''}
+                                ${recipe.rating ? `<span class="suggestion-rating">⭐ ${recipe.rating.toFixed(1)}</span>` : ''}
+                            </div>
+                            <div class="suggestion-ml-evidence">
+                                <div class="evidence-item">
+                                    <span class="evidence-label">🍽️ Similar to your folder:</span>
+                                    <span class="evidence-bar">
+                                        <div class="evidence-fill" style="width: ${similarityPercent}%"></div>
+                                    </span>
+                                    <span class="evidence-value">${similarityPercent}%</span>
+                                </div>
+                                <div class="evidence-item">
+                                    <span class="evidence-label">🤖 ML predicted rating:</span>
+                                    <span class="evidence-bar">
+                                        <div class="evidence-fill evidence-fill-ml" style="width: ${predictedPercent}%"></div>
+                                    </span>
+                                    <span class="evidence-value">${predictedPercent}%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function closeSuggestionsModal() {
+            document.getElementById('suggestionsModal').style.display = 'none';
+            document.getElementById('suggestionsGrid').innerHTML = '';
         }
 
         async function deleteBookmark(event, bookmarkId, recipeName) {

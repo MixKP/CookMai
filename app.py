@@ -11,6 +11,7 @@ from model.CustomPreprocessor import CustomPreprocessor
 from model.RecipeSearchEngine import RecipeSearchEngine
 from model.ImageCollection import ImageCollection
 from model.User import db, User, Folder, Bookmark
+from model.RecommendationModel import RecommendationModel
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
@@ -33,6 +34,12 @@ with open('resource/image_collection.pkl', 'rb') as f:
 
 with open('resource/spell_collection.pkl', 'rb') as f:
     spell_checker = pickle.load(f)
+
+# Load ML recommendation model for UC-008 (takes ~10-15 seconds)
+recommendation_model = RecommendationModel(
+    'resource/recipe_recommendation_model.pkl',
+    'resource/recipes.pkl'
+)
 
 # Thailand timezone (UTC+7)
 THAILAND_TZ = timezone(timedelta(hours=7))
@@ -339,6 +346,58 @@ def get_folder_bookmarks(folder_id):
         'notes': b.notes,
         'created_at': convert_to_thailand_time(b.created_at).isoformat() if b.created_at else None
     } for b in bookmarks])
+
+@app.route('/api/folders/<int:folder_id>/suggestions', methods=['GET'])
+@login_required
+def get_folder_suggestions(folder_id):
+    """Get ML-powered recipe suggestions for a specific folder (UC-008)"""
+    folder = Folder.query.filter_by(id=folder_id, user_id=current_user.id).first()
+
+    if not folder:
+        return jsonify({'error': 'Folder not found'}), 404
+
+    # Get all recipe IDs in this folder
+    bookmarks = Bookmark.query.filter_by(folder_id=folder_id).all()
+
+    if len(bookmarks) == 0:
+        return jsonify({
+            'error': 'Folder is empty',
+            'message': 'Add some recipes to this folder first to get personalized suggestions!'
+        }), 400
+
+    folder_recipe_ids = [b.recipe_id for b in bookmarks]
+
+    # Get ML recommendations
+    try:
+        recommendations = recommendation_model.get_folder_recommendations(
+            folder_recipe_ids,
+            top_k=12
+        )
+
+        if not recommendations:
+            return jsonify({
+                'error': 'No recommendations available',
+                'message': 'Could not generate suggestions for this folder'
+            }), 404
+
+        # Add images to recommendations
+        for recipe in recommendations:
+            recipe_id = recipe['recipe_id']
+            image_urls = image_collection.get_urls(recipe_id)
+            recipe['image'] = image_urls[0] if image_urls else ''
+
+        return jsonify({
+            'folder_name': folder.name,
+            'folder_size': len(bookmarks),
+            'recommendations': recommendations
+        })
+
+    except Exception as e:
+        print(f"Error generating recommendations: {e}")
+        return jsonify({
+            'error': 'Failed to generate recommendations',
+            'message': str(e)
+        }), 500
 
 @app.route('/api/bookmarks', methods=['POST'])
 @login_required
