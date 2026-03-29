@@ -1,6 +1,7 @@
-import pickle
 import os
+import pickle
 from datetime import timezone, timedelta
+
 from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
@@ -10,7 +11,7 @@ from model.CustomPreprocessor import CustomPreprocessor
 from model.BM25Transformer import BM25Transformer
 from model.SpellChecker import SpellChecker
 from model.ImageCollection import ImageCollection
-from model.User import db, User, Bookmark
+from model.User import db, User, Folder, Bookmark
 from model.RecommendationModel import RecommendationModel
 
 from services.recipe_service import RecipeService
@@ -19,15 +20,18 @@ from services.bookmark_service import BookmarkService
 from services.recommendation_service import RecommendationService
 from validators.category_validator import CategoryValidatorFactory
 
+
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///cookmai.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login_page'
+
 
 with open('resource/recipe_search_engine.pkl', 'rb') as f:
     search_engine = pickle.load(f)
@@ -48,12 +52,14 @@ recommendation_model = RecommendationModel(
 
 THAILAND_TZ = timezone(timedelta(hours=7))
 
+
 def convert_to_thailand_time(utc_datetime):
     if utc_datetime is None:
         return None
     if utc_datetime.tzinfo is None:
         utc_datetime = utc_datetime.replace(tzinfo=timezone.utc)
     return utc_datetime.astimezone(THAILAND_TZ)
+
 
 recipe_service = RecipeService(search_engine, image_collection, recipes_df_full)
 folder_service = FolderService(convert_to_thailand_time)
@@ -66,9 +72,11 @@ recommendation_service = RecommendationService(
     category_validator
 )
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return db.session.get(User, int(user_id))
+
 
 @app.before_request
 def create_tables():
@@ -76,41 +84,13 @@ def create_tables():
         with app.app_context():
             db.create_all()
 
+
 @app.route('/')
 def index():
     if not current_user.is_authenticated:
         return redirect(url_for('login_page'))
     return render_template('index.html')
 
-@app.route('/search', methods=['GET'])
-@login_required
-def search():
-    query = request.args.get('query', '').lower()
-    return render_template('search.html', query=query)
-
-@app.route('/api/search', methods=['GET'])
-@login_required
-def api_search():
-    query = request.args.get('q', '').lower()
-    result = recipe_service.search_recipes(query, spell_checker)
-
-    if not result:
-        return jsonify({
-            "error": "Please enter a search query",
-            "results": []
-        }), 400
-
-    return jsonify(result)
-
-@app.route('/api/recipes/<int:recipe_id>', methods=['GET'])
-@login_required
-def get_recipe_detail(recipe_id):
-    recipe = recipe_service.get_recipe_by_id(recipe_id)
-
-    if not recipe:
-        return jsonify({'error': 'Recipe not found'}), 404
-
-    return jsonify(recipe)
 
 @app.route('/login')
 def login_page():
@@ -118,11 +98,32 @@ def login_page():
         return redirect(url_for('index'))
     return render_template('login.html')
 
+
 @app.route('/register')
 def register_page():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     return render_template('register.html')
+
+
+@app.route('/search', methods=['GET'])
+@login_required
+def search():
+    query = request.args.get('query', '').lower()
+    return render_template('search.html', query=query)
+
+
+@app.route('/folders')
+@login_required
+def folders_page():
+    return render_template('folders.html')
+
+
+@app.route('/bookmarks')
+@login_required
+def bookmarks_page():
+    return render_template('bookmarks.html')
+
 
 @app.route('/api/auth/register', methods=['POST'])
 def api_register():
@@ -149,6 +150,7 @@ def api_register():
 
     return jsonify({"message": "Registration successful"}), 201
 
+
 @app.route('/api/auth/login', methods=['POST'])
 def api_login():
     data = request.get_json()
@@ -169,33 +171,56 @@ def api_login():
 
     return jsonify({"error": "Invalid username or password"}), 401
 
+
 @app.route('/api/auth/logout', methods=['POST'])
 @login_required
 def api_logout():
     logout_user()
     return jsonify({"message": "Logout successful"}), 200
 
+
 @app.route('/api/auth/status', methods=['GET'])
 def auth_status():
     if current_user.is_authenticated:
-        return jsonify({"authenticated": True, "username": current_user.username}), 200
+        return jsonify({
+            "authenticated": True,
+            "username": current_user.username
+        }), 200
     return jsonify({"authenticated": False}), 200
 
-@app.route('/folders')
-@login_required
-def folders_page():
-    return render_template('folders.html')
 
-@app.route('/bookmarks')
+@app.route('/api/search', methods=['GET'])
 @login_required
-def bookmarks_page():
-    return render_template('bookmarks.html')
+def api_search():
+    query = request.args.get('q', '').lower()
+    result = recipe_service.search_recipes(query, spell_checker)
+
+    if not result:
+        return jsonify({
+            "error": "Please enter a search query",
+            "results": []
+        }), 400
+
+    return jsonify(result)
+
+
+@app.route('/api/recipes/<int:recipe_id>', methods=['GET'])
+@login_required
+def get_recipe_detail(recipe_id):
+    recipe = recipe_service.get_recipe_by_id(recipe_id)
+
+    if not recipe:
+        return jsonify({'error': 'Recipe not found'}), 404
+
+    return jsonify(recipe)
+
 
 @app.route('/api/folders', methods=['GET'])
 @login_required
 def get_folders():
     folders = folder_service.get_user_folders(current_user.id)
     return jsonify([folder_service.folder_to_dict(f) for f in folders])
+
 
 @app.route('/api/folders', methods=['POST'])
 @login_required
@@ -213,6 +238,7 @@ def create_folder():
         }), 201
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
+
 
 @app.route('/api/folders/<int:folder_id>', methods=['PUT'])
 @login_required
@@ -234,6 +260,7 @@ def update_folder(folder_id):
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
+
 @app.route('/api/folders/<int:folder_id>', methods=['DELETE'])
 @login_required
 def delete_folder(folder_id):
@@ -242,16 +269,17 @@ def delete_folder(folder_id):
 
     return jsonify({'message': 'Folder deleted'})
 
+
 @app.route('/api/folders/<int:folder_id>/bookmarks', methods=['GET'])
 @login_required
 def get_folder_bookmarks(folder_id):
     folder = folder_service.get_folder_by_id(folder_id, current_user.id)
-
     if not folder:
         return jsonify({'error': 'Folder not found'}), 404
 
     bookmarks = bookmark_service.get_folder_bookmarks(folder_id, current_user.id)
     return jsonify([bookmark_service.bookmark_to_dict(b) for b in bookmarks])
+
 
 @app.route('/api/folders/<int:folder_id>/suggestions', methods=['GET'])
 @login_required
@@ -288,6 +316,7 @@ def get_folder_suggestions(folder_id):
             'message': str(e)
         }), 500
 
+
 @app.route('/api/bookmarks', methods=['POST'])
 @login_required
 def add_bookmark():
@@ -300,7 +329,12 @@ def add_bookmark():
 
     try:
         bookmark = bookmark_service.add_bookmark(
-            current_user.id, folder_id, recipe_id, recipe_name, user_rating, notes
+            current_user.id,
+            folder_id,
+            recipe_id,
+            recipe_name,
+            user_rating,
+            notes
         )
         return jsonify({
             'message': 'Bookmark added',
@@ -314,6 +348,7 @@ def add_bookmark():
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
 
+
 @app.route('/api/bookmarks/<int:bookmark_id>', methods=['DELETE'])
 @login_required
 def delete_bookmark(bookmark_id):
@@ -321,6 +356,7 @@ def delete_bookmark(bookmark_id):
         return jsonify({'error': 'Bookmark not found'}), 404
 
     return jsonify({'message': 'Bookmark removed'})
+
 
 @app.route('/api/bookmarks/all', methods=['GET'])
 @login_required
@@ -339,6 +375,16 @@ def get_all_bookmarks():
         'created_at': convert_to_thailand_time(b.created_at).isoformat() if b.created_at else None
     } for b in bookmarks])
 
+
+@app.route('/api/recommendations', methods=['GET'])
+@login_required
+def get_recommendations():
+    selected_category = request.args.get('category')
+    bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
+
+    return jsonify(recommendation_service.get_recommendations(current_user.id, bookmarks, selected_category))
+
+
 @app.route('/api/recommendations/categories', methods=['GET'])
 @login_required
 def get_recommendation_categories():
@@ -356,6 +402,7 @@ def get_recommendation_categories():
 
     return jsonify({'categories': valid_categories})
 
+
 @app.route('/api/categories/all', methods=['GET'])
 @login_required
 def get_all_categories():
@@ -364,13 +411,6 @@ def get_all_categories():
 
     return jsonify({'categories': valid_categories})
 
-@app.route('/api/recommendations', methods=['GET'])
-@login_required
-def get_recommendations():
-    selected_category = request.args.get('category')
-    bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
-
-    return jsonify(recommendation_service.get_recommendations(current_user.id, bookmarks, selected_category))
 
 if __name__ == '__main__':
     with app.app_context():
