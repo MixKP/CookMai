@@ -200,7 +200,7 @@
     <div id="suggestionsModal" class="modal-overlay">
         <div class="modal-box modal-large">
             <button class="modal-close" onclick="closeSuggestionsModal()">✕</button>
-            <h2 id="suggestionsModalTitle" class="modal-title">✨ AI Suggestions</h2>
+            <h2 id="suggestionsModalTitle" class="modal-title">✨ ML Suggestions</h2>
 
             <div id="suggestionsModalSpinner" class="spinner"><span class="spinner-ring"></span></div>
 
@@ -371,7 +371,7 @@
                                         <span>✏️</span> Edit
                                     </div>
                                     <div class="action-item" onclick="getAISuggestions(${folder.id}, '${escapeHtml(folder.name)}', ${folder.bookmark_count})">
-                                        <span>✨</span> Get AI Suggestions
+                                        <span>✨</span> Get ML Suggestions
                                     </div>
                                     <div class="action-item" onclick="showDeleteModal(${folder.id}, '${escapeHtml(folder.name)}')">
                                         <span>🗑️</span> Delete
@@ -677,15 +677,12 @@
 
         async function viewRecipe(recipeId) {
             try {
-                const res = await fetch(`/api/search?q=${recipeId}`);
-                const data = await res.json();
-
-                if (data.results && data.results.length > 0) {
-                    const recipe = data.results[0];
-                    openModal(recipe);
-                } else {
-                    showToast('Recipe not found', 'error');
+                const res = await fetch(`/api/recipes/${recipeId}`);
+                if (!res.ok) {
+                    throw new Error('Failed to fetch recipe');
                 }
+                const recipe = await res.json();
+                openModal(recipe);
             } catch (err) {
                 console.error('Failed to load recipe:', err);
                 showToast('Failed to load recipe', 'error');
@@ -823,7 +820,7 @@
             const content = document.getElementById('suggestionsModalContent');
             const error = document.getElementById('suggestionsModalError');
 
-            title.textContent = `✨ AI Suggestions for "${folderName}"`;
+            title.textContent = `✨ ML Suggestions for "${folderName}"`;
             spinner.style.display = 'block';
             content.style.display = 'none';
             error.style.display = 'none';
@@ -857,8 +854,6 @@
 
             spinner.style.display = 'none';
             content.style.display = 'block';
-
-            subtitle.textContent = `Based on ${data.folder_size} recipe${data.folder_size !== 1 ? 's' : ''} in "${data.folder_name}" • Powered by LightGBM + TF-IDF + LSA + LDA`;
 
             if (!data.recommendations || data.recommendations.length === 0) {
                 grid.innerHTML = '<p class="no-suggestions">No recommendations available. Try adding more recipes to this folder!</p>';
