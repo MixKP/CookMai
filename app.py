@@ -5,6 +5,9 @@ from flask import Flask, request, jsonify, render_template, redirect, url_for
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.security import check_password_hash
 
+from model.RecipeSearchEngine import RecipeSearchEngine
+from model.CustomPreprocessor import CustomPreprocessor
+from model.BM25Transformer import BM25Transformer
 from model.SpellChecker import SpellChecker
 from model.ImageCollection import ImageCollection
 from model.User import db, User, Bookmark
@@ -65,7 +68,7 @@ recommendation_service = RecommendationService(
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 @app.before_request
 def create_tables():
