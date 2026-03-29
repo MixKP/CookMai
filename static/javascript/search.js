@@ -88,6 +88,54 @@ function dismissAlert() {
     document.getElementById('typoAlert').style.display = 'none';
 }
 
+function openModal(recipe) {
+    const modal = document.getElementById('recipeModal');
+    const ingredients = parseArray(recipe.RecipeIngredientParts);
+    const instructions = parseArray(recipe.RecipeInstructions);
+
+    document.getElementById('modalImg').src = getImage(recipe.Images);
+    document.getElementById('modalTitle').textContent = recipe.Name;
+    document.getElementById('modalDescription').textContent = recipe.Description || 'No description available.';
+    document.getElementById('modalCategory').textContent = recipe.RecipeCategory || '—';
+    document.getElementById('modalPrepTime').textContent = recipe.PrepTime || '—';
+    document.getElementById('modalCookTime').textContent = recipe.CookTime || '—';
+    document.getElementById('modalTotalTime').textContent = recipe.TotalTime || '—';
+    document.getElementById('modalServings').textContent = recipe.RecipeServings || '—';
+
+    const rating = recipe.AggregatedRating;
+    const ratingContainer = document.getElementById('ratingContainer');
+    const ratingText = document.getElementById('modalRating');
+    if (rating) {
+        ratingContainer.style.display = 'flex';
+        ratingText.textContent = `${rating.toFixed(1)} ⭐ (${recipe.ReviewCount || 0} reviews)`;
+    } else {
+        ratingContainer.style.display = 'none';
+    }
+
+    const ingredientsList = document.getElementById('modalIngredients');
+    ingredientsList.innerHTML = ingredients.map(ing => `<li>${ing}</li>`).join('');
+
+    const instructionsList = document.getElementById('modalInstructions');
+    instructionsList.innerHTML = instructions.map(inst => `<li>${inst}</li>`).join('');
+
+    const bookmarkBtn = document.getElementById('modalBookmarkBtn');
+    bookmarkBtn.onclick = () => openBookmarkModal(null, recipe.RecipeId, recipe.Name);
+
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+}
+
+function closeModal() {
+    document.getElementById('recipeModal').style.display = 'none';
+    document.body.style.overflow = '';
+}
+
+document.getElementById('recipeModal').addEventListener('click', e => {
+    if (e.target.id === 'recipeModal') {
+        closeModal();
+    }
+});
+
 document.getElementById('headerSearchForm').addEventListener('submit', e => {
     e.preventDefault();
     executeSearch(document.getElementById('headerSearchInput').value);
