@@ -27,10 +27,8 @@ class Folder(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     description = db.Column(db.Text, nullable=True)
-    color = db.Column(db.String(20), default='orange')
     icon = db.Column(db.String(10), default='📁')
     created_at = db.Column(db.DateTime, server_default=db.func.now())
-    updated_at = db.Column(db.DateTime, server_default=db.func.now(), onupdate=db.func.now())
 
     bookmarks = db.relationship('Bookmark', backref='folder', lazy=True, cascade='all, delete-orphan')
 
