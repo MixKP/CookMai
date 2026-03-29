@@ -264,6 +264,8 @@ def update_folder(folder_id):
 @app.route('/api/folders/<int:folder_id>', methods=['DELETE'])
 @login_required
 def delete_folder(folder_id):
+    from flask import jsonify
+
     if not folder_service.delete_folder(folder_id, current_user.id):
         return jsonify({'error': 'Folder not found'}), 404
 

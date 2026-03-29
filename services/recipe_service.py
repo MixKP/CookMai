@@ -17,6 +17,12 @@ class RecipeService:
         suggested_query = " ".join(corrected_words)
 
         results_df = self.search_engine.search(suggested_query, top_k=top_k)
+
+        if not results_df.empty and 'Score' in results_df.columns:
+            max_score = results_df['Score'].max()
+            if max_score < 0.5:
+                results_df = results_df.iloc[0:0]
+
         results = results_df.to_dict(orient='records')
 
         for recipe in results:

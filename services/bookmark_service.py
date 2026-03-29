@@ -9,6 +9,10 @@ class BookmarkService:
         if not folder_id or not recipe_id or not recipe_name:
             raise ValueError("folder_id, recipe_id, and recipe_name are required")
 
+        folder = Folder.query.filter_by(id=folder_id, user_id=user_id).first()
+        if not folder:
+            raise ValueError("Folder not found")
+
         existing = Bookmark.query.filter_by(
             user_id=user_id,
             folder_id=folder_id,
