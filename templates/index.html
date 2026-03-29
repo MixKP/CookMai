@@ -52,7 +52,161 @@
             </form>
         </div>
 
+        <div id="recommendationsSection" class="recommendations-section" style="display: none;">
+            <!-- From Your Bookmarks -->
+            <section class="recommendation-block" id="bookmarksBlock" style="display: none;">
+                <div class="section-header">
+                    <h2>⭐ From Your Bookmarks</h2>
+                    <p>Your top-rated saved recipes</p>
+                </div>
+                <div class="recipe-grid" id="bookmarksGrid"></div>
+            </section>
+
+            <!-- Category Picks -->
+            <section class="recommendation-block" id="categoryBlock" style="display: none;">
+                <div class="section-header">
+                    <h2>🍽️ Category Picks</h2>
+                    <p>Discover more recipes like your bookmarks</p>
+                    <div class="category-filter">
+                        <select id="categorySelect" class="category-select">
+                            <option value="">All Categories (Random)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="recipe-grid" id="categoryGrid"></div>
+            </section>
+
+            <!-- Random Discoveries -->
+            <section class="recommendation-block" id="discoveriesBlock" style="display: none;">
+                <div class="section-header">
+                    <h2>🎲 Discover Something New</h2>
+                    <p>Random recipes from our collection</p>
+                </div>
+                <div class="recipe-grid" id="discoveriesGrid"></div>
+            </section>
+        </div>
+
+        <div id="noBookmarksMessage" class="no-bookmarks-message" style="display: none;">
+            <div class="no-bookmarks-icon">📚</div>
+            <h3>Start Your Collection</h3>
+            <p>Bookmark recipes to see personalized recommendations on your dashboard!</p>
+            <a href="/search" class="btn-primary">Browse Recipes</a>
+        </div>
     </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer"></div>
+
+    <!-- Recipe Modal -->
+    <div id="recipeModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeModal()">✕</button>
+            <img id="modalImg" class="modal-hero-img" src="" alt="">
+
+            <div class="modal-body">
+                <h2 id="modalTitle" class="modal-title"></h2>
+
+                <div class="modal-info-section">
+                    <div id="modalDescription" class="modal-description"></div>
+                    <div class="modal-meta-grid">
+                        <div class="meta-item">
+                            <span class="meta-label">Category:</span>
+                            <span id="modalCategory" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Prep:</span>
+                            <span id="modalPrepTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Cook:</span>
+                            <span id="modalCookTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Total:</span>
+                            <span id="modalTotalTime" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item">
+                            <span class="meta-label">Servings:</span>
+                            <span id="modalServings" class="meta-value"></span>
+                        </div>
+                        <div class="meta-item" id="ratingContainer">
+                            <span class="meta-label">Rating:</span>
+                            <span id="modalRating" class="meta-value"></span>
+                        </div>
+                    </div>
+                    <button id="modalBookmarkBtn" class="btn-bookmark-large">
+                        🔖 Bookmark this Recipe
+                    </button>
+                </div>
+
+                <div class="modal-cols">
+                    <div>
+                        <div class="col-label">Ingredients</div>
+                        <ul id="modalIngredients"></ul>
+                    </div>
+                    <div>
+                        <div class="col-label">Instructions</div>
+                        <ol id="modalInstructions"></ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bookmark Modal -->
+    <div id="bookmarkModal" class="modal-overlay">
+        <div class="modal-box">
+            <button class="modal-close" onclick="closeBookmarkModal()">✕</button>
+            <h2 class="modal-title">Save Recipe to Folder</h2>
+
+            <form class="bookmark-form" onsubmit="saveBookmark(event); return false;">
+                <div class="bookmark-recipe-info">
+                    <span class="recipe-icon">🍽️</span>
+                    <strong id="bookmarkRecipeName"></strong>
+                </div>
+
+                <div class="form-group">
+                    <label for="bookmarkFolderSelect">Choose Folder *</label>
+                    <select id="bookmarkFolderSelect" required>
+                        <option value="">Select a folder to save to...</option>
+                    </select>
+                    <small class="form-hint">Your recipe will be saved in the selected folder</small>
+                </div>
+
+                <div class="form-group">
+                    <label>Rate this recipe *</label>
+                    <div class="star-rating" id="starRating">
+                        <div class="star-wrapper" data-rating="1" onmousemove="handleStarHover(event, 1)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 1)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="2" onmousemove="handleStarHover(event, 2)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 2)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="3" onmousemove="handleStarHover(event, 3)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 3)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="4" onmousemove="handleStarHover(event, 4)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 4)">
+                            <span class="star">☆</span>
+                        </div>
+                        <div class="star-wrapper" data-rating="5" onmousemove="handleStarHover(event, 5)" onmouseleave="resetPreview()" onclick="setRatingFromClick(event, 5)">
+                            <span class="star">☆</span>
+                        </div>
+                    </div>
+                    <div class="star-rating-label" id="ratingLabel">Select your rating</div>
+                    <input type="hidden" id="bookmarkRating" value="0">
+                </div>
+
+                <div id="bookmarkInfo" class="info-message" style="display: none;"></div>
+
+                <div id="bookmarkError" class="error-message"></div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn-secondary" onclick="closeBookmarkModal()">Cancel</button>
+                    <button type="submit" class="btn-primary">Save Recipe</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <script>
         let currentUser = null;
@@ -79,6 +233,9 @@
 
         checkAuth();
     </script>
+    <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/bookmark.js') }}"></script>
     <script src="{{ url_for('static', filename='javascript/index.js') }}"></script>
 </body>
 

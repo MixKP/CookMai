@@ -420,6 +420,267 @@ def get_all_bookmarks():
 
     return jsonify(result)
 
+@app.route('/api/recommendations/categories', methods=['GET'])
+@login_required
+def get_recommendation_categories():
+    import re
+
+    # Get all user bookmarks
+    bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
+
+    if not bookmarks:
+        return jsonify({'categories': []})
+
+    # Get all bookmarked recipe IDs
+    all_bookmarked_ids = [b.recipe_id for b in bookmarks]
+    bookmarked_recipes = recipes_df_full[recipes_df_full['RecipeId'].isin(all_bookmarked_ids)]
+
+    if bookmarked_recipes.empty:
+        return jsonify({'categories': []})
+
+    # Get all categories
+    categories = bookmarked_recipes['RecipeCategory'].dropna().unique().tolist()
+
+    # Filter out number and time-based categories
+    def is_valid_category(category):
+        category_str = str(category).lower().strip()
+
+        # Skip if category is mostly numbers
+        if re.match(r'^[\d\s]+$', category_str):
+            return False
+
+        # Skip if contains time indicators
+        time_keywords = ['min', 'mins', 'minute', 'minutes', 'hr', 'hrs', 'hour', 'hours',
+                        'less', 'under', 'over', 'more', 'within', '<', '>', '≤', '≥']
+        if any(keyword in category_str for keyword in time_keywords):
+            return False
+
+        # Skip if starts with a number
+        if category_str and category_str[0].isdigit():
+            return False
+
+        return True
+
+    valid_categories = [c for c in categories if is_valid_category(c)]
+
+    # Sort categories alphabetically
+    valid_categories.sort()
+
+    return jsonify({'categories': valid_categories})
+
+@app.route('/api/categories/all', methods=['GET'])
+@login_required
+def get_all_categories():
+    import re
+
+    # Get all unique categories from the entire recipe database
+    all_categories = recipes_df_full['RecipeCategory'].dropna().unique().tolist()
+
+    # Filter out number and time-based categories
+    def is_valid_category(category):
+        category_str = str(category).lower().strip()
+
+        # Skip if category is mostly numbers
+        if category_str and category_str[0].isdigit():
+            return False
+
+        # Skip if contains time indicators
+        time_keywords = ['min', 'mins', 'minute', 'minutes', 'hr', 'hrs', 'hour', 'hours',
+                        'less', 'under', 'over', 'more', 'within', '<', '>', '≤', '≥']
+        if any(keyword in category_str for keyword in time_keywords):
+            return False
+
+        return True
+
+    valid_categories = [c for c in all_categories if is_valid_category(c)]
+
+    # Sort categories alphabetically
+    valid_categories.sort()
+
+    return jsonify({'categories': valid_categories})
+
+@app.route('/api/recommendations', methods=['GET'])
+@login_required
+def get_recommendations():
+    import random
+
+    # Get optional category filter
+    selected_category = request.args.get('category')
+
+    # Get all user bookmarks
+    bookmarks = Bookmark.query.filter_by(user_id=current_user.id).all()
+
+    if not bookmarks:
+        return jsonify({
+            'from_bookmarks': [],
+            'category_picks': [],
+            'random_discoveries': []
+        })
+
+    # 1. From Your Bookmarks - get up to 6 top-rated bookmarks
+    from_bookmarks_data = sorted(bookmarks, key=lambda x: x.user_rating or 0, reverse=True)[:6]
+
+    from_bookmarks = []
+    for b in from_bookmarks_data:
+        recipe_data = recipes_df_full[recipes_df_full['RecipeId'] == b.recipe_id]
+        if not recipe_data.empty:
+            recipe = recipe_data.iloc[0].to_dict()
+            rid = recipe.get('RecipeId')
+            if rid:
+                image_urls = image_collection.get_urls(rid)
+                recipe['Images'] = image_urls[0] if image_urls else ''
+
+            for key, value in recipe.items():
+                if isinstance(value, float) and np.isnan(value):
+                    recipe[key] = None
+
+            from_bookmarks.append({
+                'recipe_id': recipe['RecipeId'],
+                'recipe_name': recipe['Name'],
+                'image': recipe['Images'],
+                'category': recipe.get('RecipeCategory', '—'),
+                'rating': recipe.get('AggregatedRating'),
+                'user_rating': b.user_rating,
+                'folder_name': b.folder.name if b.folder else 'Unknown'
+            })
+
+    # 2. Category Picks - pick a random category from user's bookmarks and get 6 recipes
+    all_bookmarked_ids = [b.recipe_id for b in bookmarks]
+    bookmarked_recipes = recipes_df_full[recipes_df_full['RecipeId'].isin(all_bookmarked_ids)]
+
+    # Filter out number and time-based categories
+    def is_valid_category(category):
+        category_str = str(category).lower().strip()
+
+        # Skip if category is mostly numbers
+        if category_str and category_str[0].isdigit():
+            return False
+
+        # Skip if contains time indicators
+        time_keywords = ['min', 'mins', 'minute', 'minutes', 'hr', 'hrs', 'hour', 'hours',
+                        'less', 'under', 'over', 'more', 'within', '<', '>', '≤', '≥']
+        if any(keyword in category_str for keyword in time_keywords):
+            return False
+
+        return True
+
+    # If user selected a specific category, use it
+    if selected_category:
+        # Get 6 recipes from selected category (excluding user's bookmarks)
+        category_recipes = recipes_df_full[
+            (recipes_df_full['RecipeCategory'] == selected_category) &
+            (~recipes_df_full['RecipeId'].isin(all_bookmarked_ids))
+        ]
+
+        if len(category_recipes) > 0:
+            # Sample up to 6 recipes
+            category_sample = category_recipes.sample(n=min(6, len(category_recipes)), random_state=42)
+
+            category_picks = []
+            for _, recipe in category_sample.iterrows():
+                recipe_dict = recipe.to_dict()
+                rid = recipe_dict.get('RecipeId')
+                if rid:
+                    image_urls = image_collection.get_urls(rid)
+                    recipe_dict['Images'] = image_urls[0] if image_urls else ''
+
+                for key, value in recipe_dict.items():
+                    if isinstance(value, float) and np.isnan(value):
+                        recipe_dict[key] = None
+
+                category_picks.append({
+                    'recipe_id': recipe_dict['RecipeId'],
+                    'recipe_name': recipe_dict['Name'],
+                    'image': recipe_dict['Images'],
+                    'category': recipe_dict.get('RecipeCategory', '—'),
+                    'rating': recipe_dict.get('AggregatedRating')
+                })
+        else:
+            category_picks = []
+            selected_category = None
+    elif not bookmarked_recipes.empty:
+        # Get all categories from user's bookmarks
+        categories = bookmarked_recipes['RecipeCategory'].dropna().unique().tolist()
+        categories = [c for c in categories if is_valid_category(c)]
+
+        if categories:
+            # Pick a random category
+            selected_category = random.choice(categories)
+
+            # Get 6 recipes from this category (excluding user's bookmarks)
+            category_recipes = recipes_df_full[
+                (recipes_df_full['RecipeCategory'] == selected_category) &
+                (~recipes_df_full['RecipeId'].isin(all_bookmarked_ids))
+            ]
+
+            if len(category_recipes) > 0:
+                # Sample up to 6 recipes
+                category_sample = category_recipes.sample(n=min(6, len(category_recipes)), random_state=42)
+
+                category_picks = []
+                for _, recipe in category_sample.iterrows():
+                    recipe_dict = recipe.to_dict()
+                    rid = recipe_dict.get('RecipeId')
+                    if rid:
+                        image_urls = image_collection.get_urls(rid)
+                        recipe_dict['Images'] = image_urls[0] if image_urls else ''
+
+                    for key, value in recipe_dict.items():
+                        if isinstance(value, float) and np.isnan(value):
+                            recipe_dict[key] = None
+
+                    category_picks.append({
+                        'recipe_id': recipe_dict['RecipeId'],
+                        'recipe_name': recipe_dict['Name'],
+                        'image': recipe_dict['Images'],
+                        'category': recipe_dict.get('RecipeCategory', '—'),
+                        'rating': recipe_dict.get('AggregatedRating')
+                    })
+            else:
+                category_picks = []
+                selected_category = None
+        else:
+            category_picks = []
+            selected_category = None
+    else:
+        category_picks = []
+        selected_category = None
+
+    # 3. Random Discoveries - get 6 random recipes (not in user's bookmarks)
+    non_bookmarked_recipes = recipes_df_full[~recipes_df_full['RecipeId'].isin(all_bookmarked_ids)]
+
+    if len(non_bookmarked_recipes) > 0:
+        random_sample = non_bookmarked_recipes.sample(n=min(6, len(non_bookmarked_recipes)), random_state=42)
+
+        random_discoveries = []
+        for _, recipe in random_sample.iterrows():
+            recipe_dict = recipe.to_dict()
+            rid = recipe_dict.get('RecipeId')
+            if rid:
+                image_urls = image_collection.get_urls(rid)
+                recipe_dict['Images'] = image_urls[0] if image_urls else ''
+
+            for key, value in recipe_dict.items():
+                if isinstance(value, float) and np.isnan(value):
+                    recipe_dict[key] = None
+
+            random_discoveries.append({
+                'recipe_id': recipe_dict['RecipeId'],
+                'recipe_name': recipe_dict['Name'],
+                'image': recipe_dict['Images'],
+                'category': recipe_dict.get('RecipeCategory', '—'),
+                'rating': recipe_dict.get('AggregatedRating')
+            })
+    else:
+        random_discoveries = []
+
+    return jsonify({
+        'from_bookmarks': from_bookmarks,
+        'category_picks': category_picks,
+        'category_name': selected_category,
+        'random_discoveries': random_discoveries
+    })
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
