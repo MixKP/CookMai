@@ -208,32 +208,13 @@
         </div>
     </div>
 
-    <script>
-        let currentUser = null;
-
-        async function checkAuth() {
-            try {
-                const res = await fetch('/api/auth/status');
-                const data = await res.json();
-                if (data.authenticated) {
-                    currentUser = data;
-                    document.getElementById('username').textContent = data.username;
-                } else {
-                    window.location.href = '/login';
-                }
-            } catch (err) {
-                window.location.href = '/login';
-            }
-        }
-
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = '/login';
-        });
-
-        checkAuth();
-    </script>
     <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/common.js') }}"></script>
+    <script>
+        (async function() {
+            await checkAuth();
+        })();
+    </script>
     <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
     <script src="{{ url_for('static', filename='javascript/bookmark.js') }}"></script>
     <script src="{{ url_for('static', filename='javascript/index.js') }}"></script>

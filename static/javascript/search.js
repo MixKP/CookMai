@@ -10,17 +10,7 @@ async function executeSearch(query) {
     document.getElementById('spinner').style.display = 'block';
 
     try {
-        // Fetch all user bookmarks to check which recipes are already saved
-        let bookmarkedRecipeIds = new Set();
-        try {
-            const bookmarksRes = await fetch('/api/bookmarks/all');
-            if (bookmarksRes.ok) {
-                const bookmarks = await bookmarksRes.json();
-                bookmarkedRecipeIds = new Set(bookmarks.map(b => b.recipe_id));
-            }
-        } catch (err) {
-            console.error('Failed to fetch bookmarks:', err);
-        }
+        const bookmarkedRecipeIds = await fetchBookmarkedRecipeIds();
 
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
@@ -73,15 +63,10 @@ async function executeSearch(query) {
             item.className = 'recipe-item';
             item.style.animationDelay = `${i * 40}ms`;
 
-            // Use a closure to capture the isBookmarked value
             item.onclick = (function(bookmarkedStatus) {
                 return async function() {
                     try {
-                        const res = await fetch(`/api/recipes/${recipe.RecipeId}`);
-                        if (!res.ok) {
-                            throw new Error('Failed to fetch recipe details');
-                        }
-                        const fullRecipe = await res.json();
+                        const fullRecipe = await fetchRecipe(recipe.RecipeId);
                         openModal(fullRecipe, bookmarkedStatus);
                     } catch (err) {
                         console.error('Failed to load recipe:', err);

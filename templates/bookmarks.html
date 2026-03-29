@@ -109,30 +109,10 @@
     </div>
 
     <script src="{{ url_for('static', filename='javascript/utils.js') }}"></script>
+    <script src="{{ url_for('static', filename='javascript/common.js') }}"></script>
     <script src="{{ url_for('static', filename='javascript/model.js') }}"></script>
     <script>
-        let currentUser = null;
         let allBookmarks = [];
-
-        async function checkAuth() {
-            try {
-                const res = await fetch('/api/auth/status');
-                const data = await res.json();
-                if (data.authenticated) {
-                    currentUser = data;
-                    document.getElementById('username').textContent = data.username;
-                } else {
-                    window.location.href = '/login';
-                }
-            } catch (err) {
-                window.location.href = '/login';
-            }
-        }
-
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await fetch('/api/auth/logout', { method: 'POST' });
-            window.location.href = '/login';
-        });
 
         async function loadBookmarks() {
             try {
@@ -245,12 +225,7 @@
 
         async function viewRecipe(recipeId) {
             try {
-                const res = await fetch(`/api/recipes/${recipeId}`);
-                if (!res.ok) {
-                    throw new Error('Failed to fetch recipe');
-                }
-                const recipe = await res.json();
-                // All recipes on bookmarks page are already bookmarked
+                const recipe = await fetchRecipe(recipeId);
                 openModal(recipe, true);
             } catch (err) {
                 console.error('Failed to load recipe:', err);
@@ -258,28 +233,15 @@
             }
         }
 
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
+        (async function() {
+            await checkAuth();
+            await loadBookmarks();
+        })();
 
-        function renderStars(rating) {
-            let stars = '';
-            for (let i = 1; i <= 5; i++) {
-                if (rating >= i) {
-                    stars += '<span class="star-filled">★</span>';
-                } else if (rating >= i - 0.5) {
-                    stars += '<span class="star-half">★</span>';
-                } else {
-                    stars += '<span class="star-empty">☆</span>';
-                }
-            }
-            return stars;
-        }
-
-        checkAuth();
-        loadBookmarks();
+        (async function() {
+            currentUser = await checkAuth();
+            await loadBookmarks();
+        })();
     </script>
 </body>
 

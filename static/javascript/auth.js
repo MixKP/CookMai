@@ -1,19 +1,32 @@
-async function handleLogin(e) {
-    e.preventDefault();
-
-    const form = e.target;
-    const btn = form.querySelector('button[type="submit"]');
+function setButtonLoading(btn, isLoading) {
     const btnText = btn.querySelector('.btn-text');
     const btnSpinner = btn.querySelector('.btn-spinner');
-    const errorDiv = document.getElementById('errorMessage');
+    if (isLoading) {
+        btn.disabled = true;
+        btnText.style.display = 'none';
+        btnSpinner.style.display = 'inline';
+    } else {
+        btn.disabled = false;
+        btnText.style.display = 'inline';
+        btnSpinner.style.display = 'none';
+    }
+}
 
+function showError(errorDiv, message) {
+    errorDiv.textContent = message;
+    errorDiv.classList.add('show');
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    const form = e.target;
+    const btn = form.querySelector('button[type="submit"]');
+    const errorDiv = document.getElementById('errorMessage');
     const username = form.username.value.trim();
     const password = form.password.value;
 
-    btn.disabled = true;
-    btnText.style.display = 'none';
-    btnSpinner.style.display = 'inline';
     errorDiv.classList.remove('show');
+    setButtonLoading(btn, true);
 
     try {
         const res = await fetch('/api/auth/login', {
@@ -27,30 +40,20 @@ async function handleLogin(e) {
         if (res.ok) {
             window.location.href = '/';
         } else {
-            errorDiv.textContent = data.error || 'Login failed';
-            errorDiv.classList.add('show');
-            btn.disabled = false;
-            btnText.style.display = 'inline';
-            btnSpinner.style.display = 'none';
+            showError(errorDiv, data.error || 'Login failed');
+            setButtonLoading(btn, false);
         }
     } catch (err) {
-        errorDiv.textContent = 'Network error. Please try again.';
-        errorDiv.classList.add('show');
-        btn.disabled = false;
-        btnText.style.display = 'inline';
-        btnSpinner.style.display = 'none';
+        showError(errorDiv, 'Network error. Please try again.');
+        setButtonLoading(btn, false);
     }
 }
 
 async function handleRegister(e) {
     e.preventDefault();
-
     const form = e.target;
     const btn = form.querySelector('button[type="submit"]');
-    const btnText = btn.querySelector('.btn-text');
-    const btnSpinner = btn.querySelector('.btn-spinner');
     const errorDiv = document.getElementById('errorMessage');
-
     const username = form.username.value.trim();
     const password = form.password.value;
     const confirmPassword = form.confirmPassword.value;
@@ -58,14 +61,11 @@ async function handleRegister(e) {
     errorDiv.classList.remove('show');
 
     if (password !== confirmPassword) {
-        errorDiv.textContent = 'Passwords do not match';
-        errorDiv.classList.add('show');
+        showError(errorDiv, 'Passwords do not match');
         return;
     }
 
-    btn.disabled = true;
-    btnText.style.display = 'none';
-    btnSpinner.style.display = 'inline';
+    setButtonLoading(btn, true);
 
     try {
         const res = await fetch('/api/auth/register', {
@@ -79,17 +79,11 @@ async function handleRegister(e) {
         if (res.ok) {
             window.location.href = '/login';
         } else {
-            errorDiv.textContent = data.error || 'Registration failed';
-            errorDiv.classList.add('show');
-            btn.disabled = false;
-            btnText.style.display = 'inline';
-            btnSpinner.style.display = 'none';
+            showError(errorDiv, data.error || 'Registration failed');
+            setButtonLoading(btn, false);
         }
     } catch (err) {
-        errorDiv.textContent = 'Network error. Please try again.';
-        errorDiv.classList.add('show');
-        btn.disabled = false;
-        btnText.style.display = 'inline';
-        btnSpinner.style.display = 'none';
+        showError(errorDiv, 'Network error. Please try again.');
+        setButtonLoading(btn, false);
     }
 }

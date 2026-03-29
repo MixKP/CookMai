@@ -1,9 +1,3 @@
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 let userFolders = [];
 let currentRecipeId = null;
 let currentRecipeName = null;
@@ -36,7 +30,6 @@ async function openBookmarkModal(event, recipeId, recipeName) {
     const modal = document.getElementById('bookmarkModal');
     const folderSelect = document.getElementById('bookmarkFolderSelect');
 
-    // Check which folders already have this recipe bookmarked
     const bookmarkedFolders = [];
     for (const folder of userFolders) {
         try {
@@ -53,7 +46,6 @@ async function openBookmarkModal(event, recipeId, recipeName) {
         }
     }
 
-    // Build folder select options, disabling already bookmarked folders
     let folderOptionsHTML = '<option value="">Select a folder...</option>';
     folderOptionsHTML += userFolders.map(f => {
         const isBookmarked = bookmarkedFolders.includes(f.name);
@@ -67,7 +59,6 @@ async function openBookmarkModal(event, recipeId, recipeName) {
     document.getElementById('bookmarkRecipeName').textContent = recipeName;
     document.getElementById('bookmarkError').classList.remove('show');
 
-    // Show info about already bookmarked folders
     if (bookmarkedFolders.length > 0) {
         const infoDiv = document.getElementById('bookmarkInfo');
         if (infoDiv) {
@@ -87,7 +78,6 @@ async function openBookmarkModal(event, recipeId, recipeName) {
 function closeBookmarkModal() {
     document.getElementById('bookmarkModal').style.display = 'none';
     resetRating();
-    // Hide info message
     const infoDiv = document.getElementById('bookmarkInfo');
     if (infoDiv) {
         infoDiv.style.display = 'none';
@@ -230,13 +220,11 @@ async function saveBookmark(event) {
             closeBookmarkModal();
             showToast('Recipe bookmarked successfully! ✓', 'success');
 
-            // Refresh search results if on search page to update bookmark status
             const searchInput = document.getElementById('headerSearchInput');
             if (searchInput && searchInput.value) {
                 executeSearch(searchInput.value);
             }
 
-            // Refresh bookmarks if on bookmarks page
             if (typeof loadBookmarks === 'function') {
                 loadBookmarks();
             }
@@ -252,26 +240,6 @@ async function saveBookmark(event) {
     }
 }
 
-function showToast(message, type = 'success') {
-    const existingToast = document.querySelector('.toast');
-    if (existingToast) {
-        existingToast.remove();
-    }
-
-    const toast = document.createElement('div');
-    toast.className = `toast ${type}`;
-    toast.innerHTML = `
-        <span>${type === 'success' ? '✓' : '✕'}</span>
-        <span>${message}</span>
-    `;
-
-    document.body.appendChild(toast);
-
-    setTimeout(() => {
-        toast.classList.add('removing');
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
 
 document.getElementById('bookmarkModal').addEventListener('click', e => {
     if (e.target.id === 'bookmarkModal') closeBookmarkModal();
